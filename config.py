@@ -42,10 +42,10 @@ class Config:
     
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
-        # Generar una clave temporal si no está configurada
-        # NOTA: Esto reiniciará las sesiones en cada deploy
+        # Generar clave aleatoria si falta en producción
+        # Esto confirma que estamos corriendo el NUEVO código
+        print("✅ USANDO CÓDIGO NUEVO - SECRET_KEY autogenerada")
         SECRET_KEY = secrets.token_hex(32)
-        print("⚠️  ADVERTENCIA: Usando SECRET_KEY generada automáticamente.")
     
     # ============================================
     # SESIONES (REDIS)
