@@ -42,12 +42,10 @@ class Config:
     
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
-        # En desarrollo, generar una aleatoria
-        if os.environ.get('FLASK_ENV') == 'development':
-            SECRET_KEY = secrets.token_hex(32)
-            print("⚠️  ADVERTENCIA: Usando SECRET_KEY temporal. Configura una permanente en .env")
-        else:
-            raise ValueError("❌ SECRET_KEY no configurada en producción. Configúrala en .env")
+        # Generar una clave temporal si no está configurada
+        # NOTA: Esto reiniciará las sesiones en cada deploy
+        SECRET_KEY = secrets.token_hex(32)
+        print("⚠️  ADVERTENCIA: Usando SECRET_KEY generada automáticamente.")
     
     # ============================================
     # SESIONES (REDIS)
