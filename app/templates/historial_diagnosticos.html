@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="text-white fw-bold mb-4">
+        <i class="bi bi-clipboard-data me-2"></i> HISTORIAL DE DIAGNÓSTICOS
+    </h2>
+
+    <div class="row mb-4">
+        <div class="col-12 overflow-auto">
+            <div class="d-flex gap-2 pb-2">
+                <a href="{{ url_for('diagnostico.historial_diagnosticos') }}" 
+                   class="btn btn-sm fw-bold {{ 'btn-warning text-dark' if not current_wh else 'btn-outline-secondary text-white' }}">
+                   TODOS
+                </a>
+                
+                {% for w in range(1, 11) %}
+                <a href="{{ url_for('diagnostico.historial_diagnosticos', wh=w) }}" 
+                   class="btn btn-sm fw-bold {{ 'btn-warning text-dark' if current_wh == w|string else 'btn-outline-secondary text-white' }}">
+                   WH {{ w }}
+                </a>
+                {% endfor %}
+
+                <a href="{{ url_for('diagnostico.historial_diagnosticos', wh='Hydro') }}" 
+                   class="btn btn-sm fw-bold {{ 'btn-info text-dark' if current_wh == 'Hydro' else 'btn-outline-info' }}">
+                   HYDRO
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-dark border-secondary">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0 align-middle">
+                    <thead>
+                        <tr class="text-white-50 small text-uppercase">
+                            <th class="ps-4">Fecha</th>
+                            <th>Ubicación</th>
+                            <th>Equipo (SN / IP)</th>
+                            <th>Falla Reportada</th>
+                            <th>Observación</th>
+                            <th>Solución Aplicada</th>
+                            <th>Técnico</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in pagination.items %}
+                        <tr>
+                            <td class="ps-4 text-white-50 small">{{ d.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                <span class="badge bg-secondary border border-secondary">WH {{ d.warehouse_id }}</span>
+                                <span class="text-white small ms-1">R{{ d.rack_id }} (F{{ d.fila }}-C{{ d.columna }})</span>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-white">{{ d.sn_fisica }}</div>
+                                <div class="small text-info">{{ d.ip_address }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-warning text-dark">{{ d.falla }}</span>
+                            </td>
+                            <td class="small text-white text-wrap" style="max-width: 250px;">{{ d.observacion }}</td>
+                            <td>
+                                {% if 'RMA' in d.solucion %}
+                                    <span class="badge bg-danger">RMA</span>
+                                {% elif 'Conciliación' in d.solucion %}
+                                    <span class="badge bg-info text-dark">Conciliación</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ d.solucion }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-white-50">{{ d.usuario.username }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-white">
+                                <i class="bi bi-journal-x display-4 text-secondary opacity-50"></i>
+                                <p class="mt-2 mb-0">No hay diagnósticos registrados.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Paginación básica -->
+        <div class="card-footer bg-black border-top border-secondary py-3">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item"><a class="page-link bg-dark text-white border-secondary" href="{{ url_for('diagnostico.historial_diagnosticos', page=pagination.prev_num) }}">Anterior</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link bg-black text-white border-secondary">Página {{ pagination.page }} de {{ pagination.pages }}</span></li>
+                    {% if pagination.has_next %}
+                    <li class="page-item"><a class="page-link bg-dark text-white border-secondary" href="{{ url_for('diagnostico.historial_diagnosticos', page=pagination.next_num) }}">Siguiente</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+{% endblock %}

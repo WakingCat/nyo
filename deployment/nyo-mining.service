@@ -1,0 +1,34 @@
+[Unit]
+Description=N&O Mining Management System
+After=network.target mysql.service redis-server.service
+Wants=mysql.service redis-server.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+RuntimeDirectory=gunicorn
+WorkingDirectory=/home/arturo/Escritorio/nyo
+
+# Variables de entorno
+Environment="PATH=/home/arturo/Escritorio/nyo/venv/bin"
+EnvironmentFile=/home/arturo/Escritorio/nyo/.env
+
+# Comando de inicio
+ExecStart=/home/arturo/Escritorio/nyo/venv/bin/gunicorn \
+    -c /home/arturo/Escritorio/nyo/gunicorn_config.py \
+    "app:create_app()"
+
+# Reinicio automático
+Restart=always
+RestartSec=10
+
+# Límites de recursos
+LimitNOFILE=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

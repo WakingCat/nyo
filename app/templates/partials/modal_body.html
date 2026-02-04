@@ -1,0 +1,107 @@
+<div class="modal-header border-secondary bg-black">
+    <h5 class="modal-title">Gestión de Equipo: <span class="text-warning">{{ f }}-{{ c }}</span></h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+
+<div class="modal-body bg-dark text-white p-4">
+    
+    <div class="btn-group w-100 mb-4 shadow-sm">
+        <button class="btn btn-outline-warning fw-bold active" id="btn-edit" onclick="mostrarSeccion('edit')">
+            <i class="bi bi-cpu"></i> DATOS MINER
+        </button>
+        <button class="btn btn-outline-info fw-bold" id="btn-rma" onclick="mostrarSeccion('rma')">
+            <i class="bi bi-tools"></i> REPORTE RMA
+        </button>
+    </div>
+
+    <div id="sec-edit" class="menu-section">
+        <form hx-post="/api/guardar" hx-target="#miner-{{ wh }}-{{ rack }}-{{ f }}-{{ c }}" hx-swap="outerHTML" onsubmit="cerrarModal()">
+            <input type="hidden" name="wh" value="{{ wh }}">
+            <input type="hidden" name="rack" value="{{ rack }}">
+            <input type="hidden" name="fila" value="{{ f }}">
+            <input type="hidden" name="columna" value="{{ c }}">
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="small text-white mb-1">MODELO</label>
+                    <input type="text" class="form-control bg-black text-white border-secondary" name="modelo" value="{{ m.modelo if m else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-white mb-1">POTENCIA (TH/s)</label>
+                    <input type="number" step="0.1" class="form-control bg-black text-white border-secondary" name="ths" value="{{ m.ths if m else 0 }}">
+                </div>
+                <div class="col-12">
+                    <label class="small text-warning fw-bold mb-1">SN FÍSICO (ETIQUETA)</label>
+                    <input type="text" class="form-control bg-black text-white border-warning" name="sn_fisica" value="{{ m.sn_fisica if m else '' }}" required>
+                </div>
+                <div class="col-12">
+                    <label class="small text-white mb-1">SN DIGITAL (KERNEL)</label>
+                    <input type="text" class="form-control bg-black text-white border-secondary" name="sn_digital" value="{{ m.sn_digital if m else '' }}">
+                </div>
+                <div class="col-12">
+                    <label class="small text-white mb-1">MAC ADDRESS</label>
+                    <input type="text" class="form-control bg-black text-white border-secondary" name="mac" value="{{ m.mac_address if m else '' }}">
+                </div>
+            </div>
+            
+            <h6 class="mt-4 text-info border-bottom border-secondary pb-1 small fw-bold">COMPONENTES INTERNOS</h6>
+            <div class="row g-2">
+                <div class="col-6">
+                    <label class="x-small text-white">PSU SN</label>
+                    <input type="text" class="form-control form-control-sm bg-black text-white border-secondary" name="psu_sn" value="{{ m.psu_sn if m else '' }}">
+                </div>
+                <div class="col-6">
+                    <label class="x-small text-white">CONTROL BOARD SN</label>
+                    <input type="text" class="form-control form-control-sm bg-black text-white border-secondary" name="cb_sn" value="{{ m.cb_sn if m else '' }}">
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-warning w-100 fw-bold text-dark mt-4 shadow">
+                <i class="bi bi-save"></i> GUARDAR CAMBIOS EN SQL
+            </button>
+        </form>
+    </div>
+
+    <div id="sec-rma" class="menu-section d-none">
+        <form hx-post="/api/rma/enviar_y_exportar" hx-target="#miner-{{ wh }}-{{ rack }}-{{ f }}-{{ c }}" hx-swap="outerHTML" onsubmit="cerrarModal()">
+            <input type="hidden" name="wh" value="{{ wh }}">
+            <input type="hidden" name="rack" value="{{ rack }}">
+            <input type="hidden" name="fila" value="{{ f }}">
+            <input type="hidden" name="columna" value="{{ c }}">
+            
+            <div class="alert alert-info bg-dark border-info text-white small mb-3">
+                <i class="bi bi-info-circle me-2"></i> Esto moverá el equipo al estado <b>LABORATORIO</b>.
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-white mb-1">TIPO DE FALLA</label>
+                <select class="form-select bg-black text-white border-secondary" name="diagnostico_detalle">
+                    <option value="HASHBOARD">Error de Hashboard</option>
+                    <option value="PSU">Falla de Fuente</option>
+                    <option value="FANS">Falla de Ventiladores</option>
+                    <option value="NETWORK">Pérdida de Conexión</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-warning fw-bold mb-1">IP DEL PUERTO ACTUAL *</label>
+                <input type="text" 
+                       class="form-control bg-black text-white border-warning" 
+                       name="ip_rma" 
+                       placeholder="ej: 192.168.1.100"
+                       pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
+                       required>
+                <small class="text-white">Ingrese la IP del puerto del switch donde está conectada actualmente</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-white mb-1">LOG DEL KERNEL / NOTAS</label>
+                <textarea class="form-control bg-black text-white border-secondary" name="log_detalle" rows="4" placeholder="Copia los errores aquí..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-info w-100 fw-bold text-dark shadow">
+                <i class="bi bi-file-earmark-arrow-up"></i> GENERAR TICKET
+            </button>
+        </form>
+    </div>
+</div>

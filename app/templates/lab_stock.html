@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-success fw-bold"><i class="bi bi-box-seam me-2"></i>STOCK LABORATORIO</h2>
+        <a href="{{ url_for('lab.dashboard') }}" class="btn btn-outline-light">Volver</a>
+    </div>
+
+    <!-- Filtros por sector con HTMX -->
+    <div class="card bg-dark border-secondary mb-4">
+        <div class="card-body">
+            <div class="btn-group" role="group">
+                <button type="button" 
+                        class="btn {% if not sector %}btn-success{% else %}btn-outline-success{% endif %}"
+                        hx-get="/lab/stock-partial"
+                        hx-target="#stock-container"
+                        hx-swap="innerHTML">
+                    <i class="bi bi-grid-3x3"></i> Todos
+                </button>
+                <button type="button" 
+                        class="btn {% if sector == 'WH' %}btn-warning{% else %}btn-outline-warning{% endif %}"
+                        hx-get="/lab/stock-partial?sector=WH"
+                        hx-target="#stock-container"
+                        hx-swap="innerHTML">
+                    <i class="bi bi-building"></i> WH
+                </button>
+                <button type="button" 
+                        class="btn {% if sector == 'Hydro' %}btn-info{% else %}btn-outline-info{% endif %}"
+                        hx-get="/lab/stock-partial?sector=Hydro"
+                        hx-target="#stock-container"
+                        hx-swap="innerHTML">
+                    <i class="bi bi-droplet"></i> Hydro
+                </button>
+            </div>
+            <span class="ms-3 text-white">
+                <i class="bi bi-info-circle"></i> Equipos reparados listos para reinstalar
+            </span>
+        </div>
+    </div>
+
+    <!-- Grid de equipos con auto-refresh -->
+    <div id="stock-container"
+         hx-get="/lab/stock-partial{% if sector %}?sector={{ sector }}{% endif %}"
+         hx-trigger="every 5s, reloadStock from:body"
+         hx-swap="innerHTML">
+        {% include 'partials/stock_grid.html' %}
+    </div>
+</div>
+
+<!-- Modal para reinstalar (Fuera del contenedor HTMX para que no se cierre al refrescar) -->
+<div class="modal fade" id="modalReinstalar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-success text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-success">
+                    <i class="bi bi-arrow-up-circle"></i> Reinstalar Equipo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Equipo: <strong id="reinstalar-sn" class="text-warning"></strong></p>
+                <p>Sector: <span id="reinstalar-sector" class="badge"></span></p>
+                
+                <form id="formReinstalar">
+                    <input type="hidden" id="reinstalar-id">
+                    
+                    <!-- Lógica para WH -->
+                    <div id="div-selector-wh">
+                        <div class="mb-3">
+                            <label class="form-label" style="color: #adb5bd;">Warehouse Destino *</label>
+                            <select class="form-select bg-black text-white border-secondary" 
+                                    id="reinstalar-wh">
+                                <option value="">Seleccionar...</option>
+                                {% for w in range(1, 11) %}
+                                <option value="{{ w }}">WH {{ w }}</option>
+                                {% endfor %}
+                                <option value="100" style="display:none;">Hydro</option>
+                            </select>
+                            <div class="form-text text-white small mt-2">
+                                <i class="bi bi-info-circle"></i> Si no asignas ubicación exacta, quedará como "Pendiente de Colocación".
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#ubicacionExacta">
+                                <i class="bi bi-geo-alt"></i> Asignar ubicación exacta (Opcional)
+                            </button>
+                        </div>
+    
+                        <div class="collapse mt-3" id="ubicacionExacta">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="form-label" style="color: #adb5bd;">Rack</label>
+                                    <input type="number" class="form-control bg-black text-white border-secondary" 
+                                           id="reinstalar-rack" min="1" max="20" placeholder="Opcional">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" style="color: #adb5bd;">Fila</label>
+                                    <input type="number" class="form-control bg-black text-white border-secondary" 
+                                           id="reinstalar-fila" min="1" max="50" placeholder="Opcional">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" style="color: #adb5bd;">Columna</label>
+                                    <input type="number" class="form-control bg-black text-white border-secondary" 
+                                           id="reinstalar-columna" min="1" max="10" placeholder="Opcional">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lógica para Hydro -->
+                    <div id="msg-hydro-reinstalar" style="display: none;" class="alert alert-info text-center mt-3">
+                        <i class="bi bi-arrow-repeat fs-1 d-block mb-2"></i>
+                        <strong>Enviar a Contenedor Original</strong><br>
+                        El equipo volverá a su contenedor de origen, pero quedará "Pendiente de Colocación" para que el técnico lo ubique.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" 
+                        class="btn btn-success"
+                        id="btn-confirmar-reinstalar"
+                        hx-post="/api/lab/reinstalar"
+                        hx-vals="js:{
+                            id: document.getElementById('reinstalar-id').value,
+                            wh: document.getElementById('reinstalar-wh').value,
+                            rack: document.getElementById('reinstalar-rack').value,
+                            fila: document.getElementById('reinstalar-fila').value,
+                            columna: document.getElementById('reinstalar-columna').value
+                        }"
+                        hx-confirm="¿Confirmar?"
+                        data-bs-dismiss="modal"
+                        hx-indicator="#spinner-reinstalar">
+                    <i class="bi bi-check-lg me-2"></i> Confirmar
+                    <span id="spinner-reinstalar" class="htmx-indicator spinner-border spinner-border-sm ms-2"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function setReinstalarData(id, sn, sector) {
+    document.getElementById('reinstalar-id').value = id;
+    document.getElementById('reinstalar-sn').innerText = sn;
+    
+    const badge = document.getElementById('reinstalar-sector');
+    badge.innerText = sector;
+    badge.className = sector === 'Hydro' ? 'badge bg-info' : 'badge bg-warning text-dark';
+
+    const divWh = document.getElementById('div-selector-wh');
+    const msgHydro = document.getElementById('msg-hydro-reinstalar');
+    const btnReinstalar = document.getElementById('btn-confirmar-reinstalar');
+    const selectWh = document.getElementById('reinstalar-wh');
+
+    if (sector === 'Hydro') {
+        divWh.style.display = 'none';
+        msgHydro.style.display = 'block';
+        
+        // Configurar para Hydro
+        selectWh.value = '100'; // Valor fijo Hydro
+        selectWh.required = false;
+        
+        btnReinstalar.innerHTML = '<i class="bi bi-box-arrow-in-down me-2"></i> Enviar a Contenedor Original';
+        btnReinstalar.classList.remove('btn-success');
+        btnReinstalar.classList.add('btn-info');
+    } else {
+        divWh.style.display = 'block';
+        msgHydro.style.display = 'none';
+        
+        // Reset para WH
+        selectWh.value = '';
+        selectWh.required = true;
+        
+        btnReinstalar.innerHTML = '<i class="bi bi-check-lg me-2"></i> Confirmar Reinstalación';
+        btnReinstalar.classList.remove('btn-info');
+        btnReinstalar.classList.add('btn-success');
+    }
+}
+</script>
+
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+    }
+</style>
+{% endblock %}

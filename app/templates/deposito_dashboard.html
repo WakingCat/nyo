@@ -1,0 +1,891 @@
+{% extends "base.html" %}
+
+{% block title %}Depósito - Inventario de Piezas{% endblock %}
+
+{% block content %}
+<style>
+    /* Corregir contraste de inputs y selects */
+    .form-control.bg-secondary,
+    .form-select.bg-secondary {
+        background-color: #2d2d2d !important;
+        color: #ffffff !important;
+        border: 1px solid #444 !important;
+    }
+    .form-control.bg-secondary::placeholder {
+        color: #aaa !important;
+    }
+    .form-control.bg-secondary:focus,
+    .form-select.bg-secondary:focus {
+        background-color: #333 !important;
+        border-color: #ffc107 !important;
+        box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25) !important;
+    }
+    .input-group-text.bg-secondary {
+        background-color: #2d2d2d !important;
+        color: #fff !important;
+    }
+    .form-label {
+        color: #ccc !important;
+    }
+    .card.bg-dark {
+        background-color: #1a1a1a !important;
+        border-color: #333 !important;
+    }
+    .card-header {
+        background-color: #222 !important;
+        color: #fff !important;
+    }
+    .table-dark {
+        --bs-table-bg: #1a1a1a !important;
+    }
+    .form-check-label {
+        color: #fff !important;
+    }
+</style>
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-box-seam text-warning"></i> Dashboard Depósito
+            </h2>
+            <p class="text-white mb-0">Gestión de inventario de piezas por Serial Number</p>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNuevaPieza">
+                <i class="bi bi-plus-circle"></i> Nueva Pieza
+            </button>
+            <button class="btn btn-outline-info" onclick="importarDesdeSheets()">
+                <i class="bi bi-cloud-download"></i> Importar Sheets
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-2">
+            <div class="card bg-dark border-primary h-100">
+                <div class="card-body text-center py-3">
+                    <h3 class="text-primary mb-0" id="stat-total">{{ stats.total_piezas }}</h3>
+                    <small class="text-white">Total Piezas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-dark border-success h-100">
+                <div class="card-body text-center py-3">
+                    <h3 class="text-success mb-0" id="stat-disponibles">{{ stats.disponibles }}</h3>
+                    <small class="text-white">Disponibles</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-dark border-info h-100">
+                <div class="card-body text-center py-3">
+                    <h3 class="text-info mb-0" id="stat-lab">{{ stats.en_lab }}</h3>
+                    <small class="text-white">En Lab</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-dark border-warning h-100">
+                <div class="card-body text-center py-3">
+                    <h3 class="text-warning mb-0" id="stat-reparadas">{{ stats.reparadas }}</h3>
+                    <small class="text-white">Reparadas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-dark border-danger h-100">
+                <div class="card-body text-center py-3">
+                    <h3 class="text-danger mb-0" id="stat-pendientes">{{ stats.solicitudes_pendientes }}</h3>
+                    <small class="text-white">Solicitudes</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body text-center py-3">
+                    <h3 class="text-light mb-0" id="stat-cajas">{{ stats.total_cajas }}</h3>
+                    <small class="text-white">Cajas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Búsqueda rápida -->
+    <div class="card bg-dark mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-secondary border-0">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control bg-secondary text-light border-0" 
+                               id="buscar-sn" placeholder="Buscar por Serial Number..."
+                               onkeyup="buscarPiezas()">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select bg-secondary text-light border-0" id="filtro-tipo" onchange="buscarPiezas()">
+                        <option value="">Todos los tipos</option>
+                        <option value="PSU">PSU</option>
+                        <option value="FAN">FAN</option>
+                        <option value="CB">Control Board</option>
+                        <option value="HASHBOARD">Hashboard</option>
+                        <option value="CALENTADOR">Calentador</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select bg-secondary text-light border-0" id="filtro-modelo" onchange="buscarPiezas()">
+                        <option value="">Todos los modelos</option>
+                        <option value="S21+">S21+</option>
+                        <option value="S21hyd">S21 Hydro</option>
+                        <option value="Avalon">Avalon</option>
+                        <option value="Buzzminer">Buzzminer</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select bg-secondary text-light border-0" id="filtro-ubicacion" onchange="buscarPiezas()">
+                        <option value="">Todas las ubicaciones</option>
+                        <option value="STOCK">En Stock</option>
+                        <option value="LAB">En Laboratorio</option>
+                        <option value="WH">En Warehouse</option>
+                        <option value="REPARACION">En Reparación</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select bg-secondary text-light border-0" id="filtro-estado" onchange="buscarPiezas()">
+                        <option value="">Todos los estados</option>
+                        <option value="DISPONIBLE">Disponible</option>
+                        <option value="EN_USO">En Uso</option>
+                        <option value="RESERVADO">Reservado</option>
+                        <option value="DEFECTUOSO">Defectuoso</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Inventario por SN -->
+        <div class="col-lg-8">
+            <div class="card bg-dark">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-upc-scan"></i> Inventario por Serial Number</span>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-light active" onclick="vistaLista()">
+                            <i class="bi bi-list"></i>
+                        </button>
+                        <button class="btn btn-outline-light" onclick="vistaCajas()">
+                            <i class="bi bi-grid-3x3"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-dark table-hover table-sm mb-0" id="tabla-piezas">
+                            <thead class="sticky-top bg-dark">
+                                <tr>
+                                    <th>SN</th>
+                                    <th>Tipo</th>
+                                    <th>Modelo</th>
+                                    <th>Caja</th>
+                                    <th>Ubicación</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-piezas">
+                                {% for pieza in piezas %}
+                                <tr data-id="{{ pieza.id }}" data-sn="{{ pieza.sn }}">
+                                    <td>
+                                        <code class="text-warning">{{ pieza.sn }}</code>
+                                        {% if pieza.es_reparado %}
+                                        <span class="badge bg-info ms-1" title="Reparada">R</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge bg-dark border">{{ pieza.tipo }}</span></td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if 'S21+' == pieza.modelo_equipo %}bg-primary
+                                            {% elif 'hyd' in pieza.modelo_equipo|lower %}bg-info
+                                            {% elif 'Avalon' == pieza.modelo_equipo %}bg-success
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ pieza.modelo_equipo }}
+                                        </span>
+                                    </td>
+                                    <td class="text-white">
+                                        {% if pieza.caja_numero %}Caja {{ pieza.caja_numero }}{% else %}-{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if pieza.ubicacion == 'STOCK' %}
+                                        <span class="text-success"><i class="bi bi-box"></i> Stock</span>
+                                        {% elif pieza.ubicacion == 'LAB' %}
+                                        <span class="text-info"><i class="bi bi-wrench"></i> Lab</span>
+                                        {% elif pieza.ubicacion == 'WH' %}
+                                        <span class="text-warning"><i class="bi bi-building"></i> WH</span>
+                                        {% else %}
+                                        <span class="text-white">{{ pieza.ubicacion }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if pieza.estado == 'DISPONIBLE' %}
+                                        <span class="badge bg-success">Disponible</span>
+                                        {% elif pieza.estado == 'EN_USO' %}
+                                        <span class="badge bg-warning text-dark">En Uso</span>
+                                        {% elif pieza.estado == 'RESERVADO' %}
+                                        <span class="badge bg-info">Reservado</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">{{ pieza.estado }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            {% if pieza.estado == 'DISPONIBLE' %}
+                                            <button class="btn btn-outline-success btn-sm" 
+                                                    onclick="asignarASolicitud('{{ pieza.id }}', '{{ pieza.sn }}')"
+                                                    title="Asignar a solicitud">
+                                                <i class="bi bi-send"></i>
+                                            </button>
+                                            {% endif %}
+                                            <button class="btn btn-outline-light btn-sm"
+                                                    onclick="editarPieza('{{ pieza.id }}')"
+                                                    title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-white py-4">
+                                        No hay piezas registradas.
+                                        <button class="btn btn-link" data-bs-toggle="modal" data-bs-target="#modalNuevaPieza">
+                                            Agregar primera pieza
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer text-white small">
+                    Mostrando {{ piezas|length }} piezas
+                </div>
+            </div>
+        </div>
+
+        <!-- Solicitudes Pendientes -->
+        <div class="col-lg-4">
+            <div class="card bg-dark">
+                <div class="card-header">
+                    <i class="bi bi-clipboard-check"></i> Solicitudes Pendientes
+                    <span class="badge bg-danger float-end">{{ solicitudes|length }}</span>
+                </div>
+                <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                    {% if solicitudes %}
+                    <div class="list-group list-group-flush">
+                        {% for sol in solicitudes %}
+                        <div class="list-group-item bg-dark text-light border-secondary py-2" id="sol-{{ sol.id }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <span class="badge bg-warning text-dark">{{ sol.tipo_pieza }}</span>
+                                        {% if sol.miner %}
+                                        <small class="text-white">para</small>
+                                        <code>{{ sol.miner.sn_fisica[:12] }}...</code>
+                                        {% endif %}
+                                    </h6>
+                                    <small class="d-block">
+                                        <i class="bi bi-person"></i> 
+                                        <strong>{{ sol.solicitante.username if sol.solicitante else 'N/A' }}</strong>
+                                        {% if sol.solicitante and sol.solicitante.role %}
+                                        <span class="text-white">({{ sol.solicitante.role.nombre_puesto }})</span>
+                                        {% endif %}
+                                    </small>
+                                    <small class="d-block text-info">
+                                        <i class="bi bi-geo-alt"></i> 
+                                        Enviar a {{ 'WH' + (sol.wh_origen|string) if sol.wh_origen else sol.ubicacion_reparacion }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="mt-2 d-flex gap-1">
+                                <button class="btn btn-sm btn-success flex-grow-1" 
+                                        onclick="mostrarModalDespacho({{ sol.id }}, '{{ sol.tipo_pieza }}', '{{ sol.miner.modelo if sol.miner else '' }}')">
+                                    <i class="bi bi-truck"></i> Despachar
+                                </button>
+                            </div>
+                            <small class="text-white d-block mt-1">
+                                {{ sol.fecha_solicitud.strftime('%d/%m %H:%M') if sol.fecha_solicitud else '' }}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-white py-4">
+                        <i class="bi bi-check-circle fs-1"></i>
+                        <p class="mb-0">No hay solicitudes pendientes</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Resumen por Tipo -->
+            <div class="card bg-dark mt-3">
+                <div class="card-header">
+                    <i class="bi bi-pie-chart"></i> Resumen por Tipo
+                </div>
+                <div class="card-body p-2">
+                    <table class="table table-dark table-sm mb-0">
+                        <tbody>
+                            {% for tipo, cantidad in resumen_tipos.items() %}
+                            <tr>
+                                <td>{{ tipo }}</td>
+                                <td class="text-end">
+                                    <span class="badge bg-secondary">{{ cantidad }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva Pieza -->
+<div class="modal fade" id="modalNuevaPieza" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Registrar Nueva Pieza</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Serial Number *</label>
+                        <input type="text" class="form-control bg-secondary text-light" id="nueva-sn" 
+                               placeholder="Ej: APW12_XXXXXX" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Tipo de Pieza *</label>
+                        <select class="form-select bg-secondary text-light" id="nueva-tipo" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="PSU">PSU</option>
+                            <option value="FAN">FAN</option>
+                            <option value="CB">Control Board</option>
+                            <option value="HASHBOARD">Hashboard</option>
+                            <option value="CALENTADOR">Calentador</option>
+                            <option value="DISTRIBUIDOR">Distribuidor</option>
+                            <option value="PDU">PDU</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Modelo Equipo *</label>
+                        <select class="form-select bg-secondary text-light" id="nueva-modelo" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="S21+">S21+</option>
+                            <option value="S21hyd">S21 Hydro</option>
+                            <option value="Avalon">Avalon</option>
+                            <option value="Buzzminer">Buzzminer</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Modelo Pieza</label>
+                        <input type="text" class="form-control bg-secondary text-light" id="nueva-modelo-pieza" 
+                               placeholder="Ej: APW12, APW9+">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Número de Caja</label>
+                        <input type="number" class="form-control bg-secondary text-light" id="nueva-caja" 
+                               placeholder="Ej: 1, 2, 3...">
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="nueva-reparada">
+                            <label class="form-check-label" for="nueva-reparada">
+                                Es pieza reparada
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarNuevaPieza()">
+                    <i class="bi bi-check"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Despacho -->
+<div class="modal fade" id="modalDespacho" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="bi bi-truck"></i> Despachar Pieza</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="despacho-solicitud-id">
+                
+                <div class="alert alert-info">
+                    <strong>Solicitud:</strong> <span id="despacho-info"></span>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Buscar pieza por SN</label>
+                        <input type="text" class="form-control bg-secondary text-light" id="despacho-buscar-sn"
+                               placeholder="Escribir SN para buscar..." onkeyup="buscarPiezaParaDespacho()">
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label">Piezas disponibles</label>
+                        <div id="lista-piezas-disponibles" class="border border-secondary rounded p-2" 
+                             style="max-height: 200px; overflow-y: auto;">
+                            <p class="text-white mb-0">Escribir SN o seleccionar una pieza...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label">Notas del despacho</label>
+                        <textarea class="form-control bg-secondary text-light" id="despacho-notas" rows="2"
+                                  placeholder="Notas adicionales..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="confirmarDespacho()" id="btn-confirmar-despacho" disabled>
+                    <i class="bi bi-send"></i> Confirmar Despacho
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let piezaSeleccionadaId = null;
+
+// Búsqueda de piezas
+async function buscarPiezas() {
+    const sn = document.getElementById('buscar-sn').value;
+    const tipo = document.getElementById('filtro-tipo').value;
+    const modelo = document.getElementById('filtro-modelo').value;
+    const ubicacion = document.getElementById('filtro-ubicacion').value;
+    const estado = document.getElementById('filtro-estado').value;
+    
+    const params = new URLSearchParams({sn, tipo, modelo, ubicacion, estado});
+    const response = await fetch(`/deposito/api/piezas?${params}`);
+    const data = await response.json();
+    
+    if (data.status === 'ok') {
+        actualizarTablaPiezas(data.data);
+    }
+}
+
+function actualizarTablaPiezas(piezas) {
+    const tbody = document.getElementById('tbody-piezas');
+    if (piezas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-white py-4">No se encontraron piezas</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = piezas.map(p => `
+        <tr data-id="${p.id}" data-sn="${p.sn}">
+            <td>
+                <code class="text-warning">${p.sn}</code>
+                ${p.es_reparado ? '<span class="badge bg-info ms-1" title="Reparada">R</span>' : ''}
+            </td>
+            <td><span class="badge bg-dark border">${p.tipo}</span></td>
+            <td><span class="badge bg-primary">${p.modelo_equipo}</span></td>
+            <td class="text-white">${p.caja_numero ? 'Caja ' + p.caja_numero : '-'}</td>
+            <td>${getUbicacionBadge(p.ubicacion)}</td>
+            <td>${getEstadoBadge(p.estado)}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    ${p.estado === 'DISPONIBLE' ? 
+                        `<button class="btn btn-outline-success btn-sm" onclick="asignarASolicitud('${p.id}', '${p.sn}')"><i class="bi bi-send"></i></button>` : ''}
+                    <button class="btn btn-outline-light btn-sm" onclick="editarPieza('${p.id}')"><i class="bi bi-pencil"></i></button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getUbicacionBadge(ubicacion) {
+    const badges = {
+        'STOCK': '<span class="text-success"><i class="bi bi-box"></i> Stock</span>',
+        'LAB': '<span class="text-info"><i class="bi bi-wrench"></i> Lab</span>',
+        'WH': '<span class="text-warning"><i class="bi bi-building"></i> WH</span>'
+    };
+    return badges[ubicacion] || `<span class="text-white">${ubicacion}</span>`;
+}
+
+function getEstadoBadge(estado) {
+    const badges = {
+        'DISPONIBLE': '<span class="badge bg-success">Disponible</span>',
+        'EN_USO': '<span class="badge bg-warning text-dark">En Uso</span>',
+        'RESERVADO': '<span class="badge bg-info">Reservado</span>',
+        'DEFECTUOSO': '<span class="badge bg-danger">Defectuoso</span>'
+    };
+    return badges[estado] || `<span class="badge bg-secondary">${estado}</span>`;
+}
+
+// Guardar nueva pieza
+async function guardarNuevaPieza() {
+    const sn = document.getElementById('nueva-sn').value.trim();
+    const tipo = document.getElementById('nueva-tipo').value;
+    const modelo = document.getElementById('nueva-modelo').value;
+    
+    if (!sn || !tipo || !modelo) {
+        alert('Complete los campos obligatorios');
+        return;
+    }
+    
+    const response = await fetch('/deposito/api/piezas/crear', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            sn: sn,
+            tipo: tipo,
+            modelo_equipo: modelo,
+            modelo_pieza: document.getElementById('nueva-modelo-pieza').value,
+            caja_numero: document.getElementById('nueva-caja').value || null,
+            es_reparado: document.getElementById('nueva-reparada').checked
+        })
+    });
+    
+    const data = await response.json();
+    if (data.status === 'ok') {
+        alert('Pieza registrada correctamente');
+        location.reload();
+    } else {
+        alert('Error: ' + data.message);
+    }
+}
+
+let currentDispatchContext = { tipo: '', modelo: '' };
+let debounceTimer = null;
+
+// Modal de despacho
+function mostrarModalDespacho(solicitudId, tipoPieza, modeloEquipo) {
+    document.getElementById('despacho-solicitud-id').value = solicitudId;
+    document.getElementById('despacho-info').textContent = `${tipoPieza} para modelo ${modeloEquipo || 'N/A'}`;
+    document.getElementById('despacho-buscar-sn').value = '';
+    document.getElementById('lista-piezas-disponibles').innerHTML = '<p class="text-white mb-0">Cargando piezas recientes...</p>';
+    piezaSeleccionadaId = null;
+    document.getElementById('btn-confirmar-despacho').disabled = true;
+    
+    // Guardar contexto
+    currentDispatchContext = { tipo: tipoPieza, modelo: modeloEquipo };
+    
+    new bootstrap.Modal(document.getElementById('modalDespacho')).show();
+    
+    // Cargar piezas recientes (sin filtro SN)
+    cargarPiezasDisponibles();
+}
+
+async function cargarPiezasDisponibles(sn = '') {
+    const { tipo, modelo } = currentDispatchContext;
+    
+    // Configurar filtros base
+    const params = new URLSearchParams({
+        tipo, 
+        estado: 'DISPONIBLE', 
+        ubicacion: 'STOCK'
+    });
+
+    // Si hay búsqueda por SN:
+    if (sn) {
+        params.set('sn', sn);
+        // IMPORTANTE: Al buscar por SN, ignoramos el modelo para permitir piezas compatibles
+        // (ej: usar fuente de S21+ en S21 Hydro)
+    } else {
+        // Solo si NO hay búsqueda por SN, aplicamos el filtro de modelo estricto
+        if (modelo) params.set('modelo', modelo);
+        params.set('sn', ''); 
+    }
+    
+    // params.set('sn', sn) ya lo hacía, pero el modelo era el problema.
+    // Ahora 'modelo' solo se setea en el else.
+    
+    try {
+        const response = await fetch(`/deposito/api/piezas?${params}`);
+        const data = await response.json();
+        
+        if (data.status === 'ok') {
+            if (data.data.length > 0) {
+                mostrarPiezasDisponibles(data.data);
+            } else {
+                document.getElementById('lista-piezas-disponibles').innerHTML = 
+                    '<p class="text-warning mb-0"><i class="bi bi-exclamation-triangle"></i> No se encontraron piezas disponibles.</p>';
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById('lista-piezas-disponibles').innerHTML = '<p class="text-danger">Error al cargar piezas.</p>';
+    }
+}
+
+function mostrarPiezasDisponibles(piezas) {
+    const container = document.getElementById('lista-piezas-disponibles');
+    container.innerHTML = piezas.map(p => `
+        <div class="form-check py-1 border-bottom border-secondary">
+            <input class="form-check-input" type="radio" name="pieza-despacho" 
+                   id="pieza-${p.id}" value="${p.id}" onchange="seleccionarPieza(${p.id})">
+            <label class="form-check-label w-100" for="pieza-${p.id}">
+                <code class="text-warning">${p.sn}</code>
+                <span class="float-end">
+                    <span class="badge bg-dark border">${p.modelo_equipo}</span>
+                    ${p.es_reparado ? '<span class="badge bg-info">R</span>' : ''}
+                </span>
+            </label>
+        </div>
+    `).join('');
+}
+
+function seleccionarPieza(piezaId) {
+    piezaSeleccionadaId = piezaId;
+    document.getElementById('btn-confirmar-despacho').disabled = false;
+}
+
+async function confirmarDespacho() {
+    if (!piezaSeleccionadaId) {
+        alert('Seleccione una pieza');
+        return;
+    }
+    
+    const solicitudId = document.getElementById('despacho-solicitud-id').value;
+    const notas = document.getElementById('despacho-notas').value;
+    
+    const response = await fetch('/deposito/api/piezas/despachar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            solicitud_id: solicitudId,
+            pieza_id: piezaSeleccionadaId,
+            notas: notas
+        })
+    });
+    
+    const data = await response.json();
+    if (data.status === 'ok') {
+        alert('Pieza despachada correctamente');
+        location.reload();
+    } else {
+        alert('Error: ' + data.message);
+    }
+}
+
+function buscarPiezaParaDespacho() {
+    const sn = document.getElementById('despacho-buscar-sn').value;
+    
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        // Buscar si tiene 3+ caracteres o si está vacío (para recargar lista default)
+        if (sn.length >= 3 || sn.length === 0) {
+            document.getElementById('lista-piezas-disponibles').innerHTML = 
+                '<div class="text-center text-info"><div class="spinner-border spinner-border-sm"></div> Buscando...</div>';
+            cargarPiezasDisponibles(sn);
+        }
+    }, 400); // 400ms debounce
+}
+
+// Importar desde Sheets
+async function importarDesdeSheets() {
+    const spreadsheetId = prompt(
+        'Ingresa el ID de la planilla de Google Sheets:\n\n' +
+        'Ejemplo: 1j4vZT0GMTTHAAmK9AD1RoZfft5LdnXBt6t3c6xlg-Ls\n\n' +
+        '(El ID es la parte de la URL después de /d/ y antes de /edit)',
+        '1j4vZT0GMTTHAAmK9AD1RoZfft5LdnXBt6t3c6xlg-Ls'
+    );
+    
+    if (!spreadsheetId || spreadsheetId.trim() === '') {
+        return;
+    }
+    
+    if (!confirm('¿Importar datos desde Google Sheets?\n\nEsto puede tardar unos minutos dependiendo de la cantidad de datos.')) {
+        return;
+    }
+    
+    // Mostrar loading
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Importando...';
+    
+    try {
+        const response = await fetch('/deposito/api/importar-sheets', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                spreadsheet_id: spreadsheetId.trim()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'ok') {
+            let mensaje = `✅ IMPORTACIÓN COMPLETADA\n\n`;
+            mensaje += `📦 Piezas creadas: ${data.creadas}\n`;
+            mensaje += `⚠️ Duplicadas (ignoradas): ${data.duplicadas}\n`;
+            mensaje += `📋 Total procesadas: ${data.total_procesadas}\n\n`;
+            mensaje += `📄 Hojas procesadas:\n${data.hojas_procesadas.join('\n')}\n`;
+            
+            if (data.errores_sheets && data.errores_sheets.length > 0) {
+                mensaje += `\n⚠️ Errores al leer Sheets:\n${data.errores_sheets.join('\n')}`;
+            }
+            
+            if (data.errores_db && data.errores_db.length > 0) {
+                mensaje += `\n❌ Errores de BD:\n${data.errores_db.slice(0, 5).join('\n')}`;
+                if (data.errores_db.length > 5) {
+                    mensaje += `\n... y ${data.errores_db.length - 5} más`;
+                }
+            }
+            
+            alert(mensaje);
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        alert('❌ Error al importar: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+</script>
+
+<!-- Modal Editar Pieza -->
+<div class="modal fade" id="modalEditarPieza" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Editar Pieza</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Pieza: <strong id="editar-sn" class="text-warning"></strong></p>
+                <input type="hidden" id="editar-id">
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select bg-secondary text-light" id="editar-estado">
+                            <option value="DISPONIBLE">DISPONIBLE</option>
+                            <option value="EN_USO">EN USO (Despachado)</option>
+                            <option value="RESERVADO">RESERVADO</option>
+                            <option value="DEFECTUOSO">DEFECTUOSO</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">
+                            * Cambiar a DISPONIBLE reingresa la pieza al stock.
+                        </small>
+                    </div>
+                
+                    <div class="col-6">
+                        <label class="form-label">Ubicación</label>
+                        <select class="form-select bg-secondary text-light" id="editar-ubicacion">
+                            <option value="STOCK">Stock</option>
+                            <option value="LAB">Laboratorio</option>
+                            <option value="WH">Warehouse</option>
+                            <option value="REPARACION">Reparación Externa</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Caja Número</label>
+                        <input type="number" class="form-control bg-secondary text-light" id="editar-caja">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Notas</label>
+                        <textarea class="form-control bg-secondary text-light" id="editar-notas" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarEdicionPieza()">
+                    <i class="bi bi-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ... (código existente) ...
+
+// ==========================================
+// EDICIÓN DE PIEZA
+// ==========================================
+
+async function editarPieza(id) {
+    try {
+        const response = await fetch(`/deposito/api/piezas/${id}`);
+        const data = await response.json();
+        
+        if (data.status === 'ok') {
+            const p = data.data;
+            document.getElementById('editar-id').value = p.id;
+            document.getElementById('editar-sn').textContent = p.sn;
+            document.getElementById('editar-estado').value = p.estado;
+            document.getElementById('editar-ubicacion').value = p.ubicacion;
+            document.getElementById('editar-caja').value = p.caja_numero || '';
+            document.getElementById('editar-notas').value = p.notas || '';
+            
+            new bootstrap.Modal(document.getElementById('modalEditarPieza')).show();
+        } else {
+            alert('Error al cargar datos: ' + data.message);
+        }
+    } catch (e) {
+        alert('Error de conexión');
+    }
+}
+
+async function guardarEdicionPieza() {
+    const id = document.getElementById('editar-id').value;
+    
+    // Si cambia a DISPONIBLE, forzar ubicación a STOCK si no se cambió manualmente
+    let ubicacion = document.getElementById('editar-ubicacion').value;
+    const estado = document.getElementById('editar-estado').value;
+    
+    if (estado === 'DISPONIBLE' && ubicacion !== 'STOCK') {
+        if (confirm('Al poner en DISPONIBLE, ¿desea mover la ubicación a STOCK automáticamente?')) {
+            ubicacion = 'STOCK';
+        }
+    }
+    
+    try {
+        const response = await fetch(`/deposito/api/piezas/${id}/actualizar`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                estado: estado,
+                ubicacion: ubicacion,
+                caja_numero: document.getElementById('editar-caja').value || null,
+                notas: document.getElementById('editar-notas').value
+            })
+        });
+        
+        const data = await response.json();
+        if (data.status === 'ok') {
+            alert('Cambios guardados');
+            location.reload(); 
+        } else {
+            alert('Error: ' + data.message);
+        }
+    } catch (e) {
+        alert('Error al guardar cambios');
+    }
+}
+</script>
+{% endblock %}

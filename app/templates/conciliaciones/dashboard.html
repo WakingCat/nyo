@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard de Conciliación{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-primary"><i class="fas fa-tools"></i> Dashboard de Conciliación</h2>
+            <p class="text-muted">Gestiona tus solicitudes de piezas, pruebas y devoluciones.</p>
+        </div>
+    </div>
+
+    <!-- Active Requests Table -->
+    <div class="card bg-dark text-white border-secondary">
+        <div class="card-header border-secondary">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Mis Solicitudes Activas</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr class="text-white-50">
+                            <th>ID</th>
+                            <th>Minero</th>
+                            <th>Pieza</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="conciliaciones-tbody"
+                           hx-get="{{ url_for('conciliacion_dash.tabla_partial') }}"
+                           hx-trigger="every 5s"
+                           hx-swap="innerHTML">
+                        {% include 'partials/conciliaciones_table_body.html' %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Modales fuera de la tabla para que no se pierdan con el refresh -->
+        {% if solicitudes %}
+            {% for sol in solicitudes %}
+                {% if sol.estado == 'recibido' %}
+                <!-- Modal Éxito -->
+                <div class="modal fade" id="modalExito{{ sol.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content bg-dark border-success">
+                            <div class="modal-header">
+                                <h5 class="modal-title text-success">Prueba Exitosa</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="{{ url_for('conciliacion_dash.finalizar_exito', id=sol.id) }}" method="POST">
+                                <div class="modal-body">
+                                    <p>Confirmas que la pieza <strong>{{ sol.tipo_pieza }}</strong> solucionó el problema?</p>
+                                    <textarea name="comentario" class="form-control bg-black text-white" placeholder="Comentario opcional..."></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-success">Confirmar Reparación</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Ceder -->
+                <div class="modal fade" id="modalCeder{{ sol.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content bg-dark border-danger">
+                            <div class="modal-header">
+                                <h5 class="modal-title text-danger">Ceder a Laboratorio</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="{{ url_for('conciliacion_dash.ceder_lab', id=sol.id) }}" method="POST">
+                                <div class="modal-body">
+                                    <p>El equipo NO funcionó con la pieza nueva.</p>
+                                    <p>Se generará un <strong>ingreso a Laboratorio</strong> para reparación profunda.</p>
+                                    <textarea name="comentario" class="form-control bg-black text-white" placeholder="Motivo del fallo..." required></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-danger">Confirmar y Ceder</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

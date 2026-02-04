@@ -1,0 +1,405 @@
+:root {
+    /* Paleta de Colores Industrial */
+    --bg-dark: #050608;
+    /* Fondo casi negro */
+    --panel-bg: #0d1117;
+    /* Fondo de paneles */
+    --card-bg: #161b22;
+    /* Fondo de tarjetas */
+    --border-color: #30363d;
+    /* Bordes sutiles */
+
+    /* Acentos Neón */
+    --accent: #ffc107;
+    /* Ámbar (N&O Brand) */
+    --success: #238636;
+    /* Verde GitHub/Server */
+    --success-glow: #3fb950;
+    /* Verde brillante para LED */
+    --danger: #da3633;
+    /* Rojo error */
+    --info: #388bfd;
+    /* Azul laboratorio */
+    --empty: #21262d;
+    /* Color de slot vacío */
+
+    --text-main: #c9d1d9;
+    --text-white: #8b949e;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+}
+
+/* =========================================
+   1. MEJORA DE LA NAVEGACIÓN DE RACKS
+   ========================================= */
+.rack-navigation {
+    display: flex;
+    gap: 4px;
+    background: #010409;
+    padding: 5px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+    flex-wrap: wrap;
+    /* Para pantallas pequeñas */
+}
+
+.btn-rack {
+    text-decoration: none;
+    color: var(--text-white);
+    font-family: 'JetBrains Mono', monospace;
+    /* Fuente técnica */
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Efecto Hover */
+.btn-rack:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #444;
+}
+
+/* Estado Activo (Botón Encendido) */
+.btn-rack.active {
+    background: var(--accent);
+    color: #000;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.4);
+    border-color: var(--accent);
+}
+
+/* Pequeña luz debajo del activo */
+.btn-rack.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #fff;
+    opacity: 0.5;
+}
+
+/* =========================================
+   2. EL CHASIS DEL RACK (Matrix Container)
+   ========================================= */
+.matrix-container {
+    padding: 25px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    /* Sombra interna para dar profundidad de "caja" */
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+    overflow-x: auto !important;
+    position: relative;
+}
+
+/* Tornillos decorativos en las esquinas (Puro estilo industrial) */
+.matrix-container::before,
+.matrix-container::after {
+    content: '+';
+    position: absolute;
+    color: #333;
+    font-family: monospace;
+    font-size: 20px;
+    pointer-events: none;
+}
+
+.matrix-container::before {
+    top: 10px;
+    left: 10px;
+}
+
+.matrix-container::after {
+    top: 10px;
+    right: 10px;
+}
+
+.miner-grid {
+    display: grid !important;
+    grid-template-columns: repeat(15, 100px) !important;
+    gap: 8px !important;
+    width: max-content;
+    margin: 0 auto;
+    padding: 10px;
+    background: repeating-linear-gradient(45deg,
+            #0d1117,
+            #0d1117 10px,
+            #11151c 10px,
+            #11151c 20px);
+    /* Fondo rayado sutil */
+    border-radius: 6px;
+}
+
+/* =========================================
+   3. TARJETAS DE MINEROS (MÓDULOS)
+   ========================================= */
+.miner-card {
+    width: 100px !important;
+    height: 115px !important;
+    border-radius: 4px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+}
+
+/* --- ESTADO 1: MINERO OK (Módulo Insertado) --- */
+.status-ok {
+    background: linear-gradient(180deg, #1f242c 0%, #161b22 100%);
+    border: 1px solid #30363d;
+    border-top: 1px solid #444;
+    /* Brillo superior */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Luz LED Verde pulsante */
+.status-ok::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--success-glow);
+    box-shadow: 0 0 6px var(--success-glow);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 10px var(--success-glow);
+    }
+
+    100% {
+        opacity: 0.5;
+    }
+}
+
+/* --- ESTADO 2: SLOT VACÍO (Hueco) --- */
+.status-empty {
+    background-color: #050608;
+    border: 1px dashed #30363d;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    /* Sombra interna = hundido */
+    opacity: 0.6;
+}
+
+.status-empty i {
+    opacity: 0.2;
+}
+
+.status-empty:hover {
+    opacity: 1;
+    border-color: #555;
+    background-color: #0a0c10;
+}
+
+/* --- ESTADO 3: RMA (Alerta) --- */
+.status-in-rma {
+    background: repeating-linear-gradient(135deg,
+            rgba(56, 139, 253, 0.1),
+            rgba(56, 139, 253, 0.1) 10px,
+            rgba(22, 27, 34, 0.8) 10px,
+            rgba(22, 27, 34, 0.8) 20px);
+    border: 1px solid var(--info);
+}
+
+.status-in-rma::after {
+    content: 'LAB';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 0.5rem;
+    background: var(--info);
+    color: white;
+    padding: 1px 3px;
+    border-radius: 2px;
+}
+
+/* INTERACCIÓN */
+.miner-card:hover {
+    transform: translateY(-2px);
+    z-index: 5;
+    border-color: var(--accent);
+}
+
+.status-ok:hover {
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.2);
+}
+
+/* TEXTOS DENTRO DE LA TARJETA */
+.pos-label {
+    position: absolute;
+    top: 4px;
+    left: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    color: #484f58;
+    font-weight: bold;
+}
+
+.model-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #e6edf3;
+    letter-spacing: -0.5px;
+    margin-top: 5px;
+}
+
+.hash-tag {
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--success-glow);
+    background: rgba(35, 134, 54, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+/* =========================================
+   4. MODAL & SIDEBAR FIXES
+   ========================================= */
+.modal {
+    z-index: 2000 !important;
+}
+
+.modal-backdrop {
+    z-index: 1900 !important;
+    background-color: rgba(0, 0, 0, 0.85);
+}
+
+.modal-content {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+.form-control,
+.form-select {
+    background-color: #010409 !important;
+    border: 1px solid #30363d !important;
+    color: #c9d1d9 !important;
+}
+
+.form-control:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2) !important;
+}
+
+/* Sidebar adjustments */
+.sidebar .nav-link {
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.sidebar .nav-link:hover {
+    background: #21262d;
+    color: var(--accent) !important;
+}
+
+.hover-light:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+.hover-white:hover {
+    color: #fff !important;
+}
+
+/* === ANIMACIÓN DE BÚSQUEDA === */
+@keyframes goldPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+        border-color: #ffc107;
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 0 30px 10px rgba(255, 193, 7, 0);
+        border-color: #fff;
+        transform: scale(1.15);
+        /* Se agranda un poco */
+        z-index: 100;
+        background-color: #2a240e;
+        /* Fondo ligeramente dorado */
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+        border-color: #ffc107;
+        transform: scale(1);
+    }
+}
+
+.shining-gold {
+    animation: goldPulse 1.5s infinite;
+    /* Pulsa infinitamente hasta que hagas clic */
+    border: 2px solid #ffc107 !important;
+    z-index: 50;
+}
+
+/* =========================================
+   5. HTMX TRANSITIONS
+   ========================================= */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.container-btn:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s;
+}/* --- ESTADO 4: CONCILIANDO (Reparación In-Situ) --- */
+.status-conciliando {
+    background: repeating-linear-gradient(135deg,
+            rgba(255, 193, 7, 0.1),
+            rgba(255, 193, 7, 0.1) 10px,
+            rgba(22, 27, 34, 0.8) 10px,
+            rgba(22, 27, 34, 0.8) 20px);
+    border: 1px solid var(--accent);
+}
+
+.status-conciliando::after {
+    content: 'FIX';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 0.5rem;
+    background: var(--accent);
+    color: black;
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: bold;
+}

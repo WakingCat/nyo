@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="text-white fw-bold mb-4">
+        <i class="bi bi-shield-check me-2"></i>
+        PRE-APROBACIÓN DE LABORATORIO
+    </h2>
+
+    <div class="card bg-dark border-secondary">
+        <div class="card-body p-0">
+            <table class="table table-dark table-hover mb-0 align-middle">
+                <thead>
+                    <tr class="text-white-50 small text-uppercase">
+                        <th>Equipo</th>
+                        <th>Origen</th>
+                        <th>Destino</th>
+                        <th>Motivo</th>
+                        <th>Diagnóstico</th>
+                        <th>Fecha</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in solicitudes %}
+                    <tr id="solicitud-{{ s.id }}">
+                        <td>
+                            <div class="fw-bold text-white">{{ s.miner.sn_fisica }}</div>
+                            <div class="small text-white-50">{{ s.miner.modelo }}</div>
+                        </td>
+                        <td>
+                            <span class="text-warning">{{ s.origen_str }}</span>
+                        </td>
+                        <td class="text-success fw-bold">
+                            {{ s.destino }}
+                        </td>
+                        <td class="small">{{ s.motivo }}</td>
+                        <td>
+                            {% if s.miner.diagnostico_detalle %}
+                                <span class="badge bg-danger text-white">{{ s.miner.diagnostico_detalle }}</span>
+                            {% else %}
+                                <span class="text-white-50">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-white-50">{{ s.fecha_solicitud.strftime('%d/%m %H:%M') }}</td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button"
+                                        class="btn btn-success"
+                                        hx-post="/lab/aprobaciones/aprobar/{{ s.id }}"
+                                        hx-confirm="¿Validar falla y enviar a Coordinador?"
+                                        hx-target="#solicitud-{{ s.id }}"
+                                        hx-swap="outerHTML swap:300ms">
+                                    <i class="bi bi-check-lg me-1"></i> Validar
+                                </button>
+                                <button type="button"
+                                        class="btn btn-danger"
+                                        onclick="confirmarRechazo('{{ s.id }}', '{{ s.miner.sn_fisica }}')">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-white">
+                            <i class="bi bi-check-circle display-4 text-success opacity-50"></i>
+                            <p class="mt-2 mb-0">No hay solicitudes pendientes de validación</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Rechazo -->
+<div class="modal fade" id="modalRechazo" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="formRechazo" class="modal-content bg-dark border-danger text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Rechazar Solicitud</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>MP: <strong id="rechazo-sn"></strong></p>
+                <div class="mb-3">
+                    <label class="form-label text-white-50">Motivo del rechazo</label>
+                    <textarea name="motivo" class="form-control bg-black text-white border-secondary" required rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Rechazar Definitivamente</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentSolicitudId = null;
+
+function confirmarRechazo(id, sn) {
+    currentSolicitudId = id;
+    document.getElementById('rechazo-sn').textContent = sn;
+    new bootstrap.Modal(document.getElementById('modalRechazo')).show();
+}
+
+document.getElementById('formRechazo').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const motivo = this.motivo.value;
+    
+    fetch(`/lab/aprobaciones/rechazar/${currentSolicitudId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `motivo=${encodeURIComponent(motivo)}`
+    }).then(res => {
+        if (res.ok) {
+            document.getElementById(`solicitud-${currentSolicitudId}`).remove();
+            bootstrap.Modal.getInstance(document.getElementById('modalRechazo')).hide();
+            this.reset();
+        } else {
+            alert('Error al rechazar');
+        }
+    });
+});
+</script>
+{% endblock %}

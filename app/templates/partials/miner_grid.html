@@ -1,0 +1,30 @@
+<div class="d-flex justify-content-between align-items-end mb-4 px-3">
+    <div>
+        <h2 class="mb-0 text-white" style="font-weight: 800; letter-spacing: -1px;">
+            WH {{ wh_actual }} <span class="text-white mx-2">/</span> 
+            <span style="color: var(--accent);">RACK {{ rack_actual }}</span>
+        </h2>
+    </div>
+    
+    <div class="rack-navigation">
+        {% for r in range(1, 17) %}
+        <a href="/dashboard/{{ wh_actual }}/{{ r }}" 
+           class="btn-rack {% if r == rack_actual %}active{% endif %}">
+           R{{ r }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="matrix-container">
+    <div class="miner-grid">
+        {% for f in range(12, 0, -1) %}
+            {% for c in range(1, 16) %}
+                {% set m = datos.get((f, c)) %}
+                
+                {% include 'partials/miner_card.html' %}
+                
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>

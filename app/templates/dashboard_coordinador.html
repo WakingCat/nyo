@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="mb-4">
+        <h2 class="text-white fw-bold mb-1">
+            <i class="bi bi-person-badge me-2" style="color: #ff6b6b;"></i>
+            Panel de Coordinador
+        </h2>
+        <p class="text-white">Gestión de solicitudes y supervisión general</p>
+    </div>
+
+    <!-- Grid de Widgets -->
+    <div class="row g-4">
+        <!-- Widget Principal: Solicitudes Pendientes -->
+        <div class="col-md-8">
+            <div class="card bg-dark border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+                <div class="card-header bg-transparent border-0 pt-4 px-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="text-white mb-1">
+                                <i class="bi bi-inbox-fill me-2"></i>
+                                Solicitudes de Traslado Pendientes
+                            </h4>
+                            <p class="text-white-50 small mb-0">Requieren tu aprobación</p>
+                        </div>
+                        <a href="{{ url_for('transfers.panel') }}" class="btn btn-light btn-sm">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> Ver Panel Completo
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="row g-3 mb-3">
+                        <div class="col-4 text-center">
+                            <div class="p-3 rounded" style="background: rgba(255,255,255,0.1);">
+                                <h2 class="text-white mb-0" 
+                                    hx-get="{{ url_for('transfers.badge_count') }}" 
+                                    hx-trigger="every 5s"
+                                    hx-swap="innerHTML">
+                                    {{ pendientes_total }}
+                                </h2>
+                                <small class="text-white-50">Total</small>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="p-3 rounded" style="background: rgba(255,193,7,0.2);">
+                                <h2 class="text-warning mb-0">{{ pendientes_wh }}</h2>
+                                <small class="text-white-50">WH</small>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div class="p-3 rounded" style="background: rgba(23,162,184,0.2);">
+                                <h2 class="text-info mb-0">{{ pendientes_hydro }}</h2>
+                                <small class="text-white-50">Hydro</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('transfers.panel') }}" class="btn btn-warning btn-lg">
+                            <i class="bi bi-check-circle-fill me-2"></i> Aprobar Solicitudes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accesos Rápidos -->
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary shadow h-100">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="text-white mb-0">
+                        <i class="bi bi-lightning-fill text-warning me-2"></i>Accesos Rápidos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.monitor') }}" class="btn btn-outline-success text-start">
+                            <i class="bi bi-activity me-2"></i> Monitor General
+                        </a>
+                        <a href="{{ url_for('main.resumen') }}" class="btn btn-outline-info text-start">
+                            <i class="bi bi-bar-chart-fill me-2"></i> Resumen Aire/Hydro
+                        </a>
+                        <a href="{{ url_for('lab.dashboard') }}" class="btn btn-outline-primary text-start">
+                            <i class="bi bi-wrench me-2"></i> Laboratorio
+                        </a>
+                        <hr class="border-secondary">
+                        {% if session.get('depto') == 'Hydro' %}
+                        <a href="{{ url_for('main.dashboard_hydro') }}" class="btn btn-outline-light text-start">
+                            <i class="bi bi-grid-3x3 me-2"></i> Ver Contenedores
+                        </a>
+                        {% else %}
+                        <a href="/dashboard/1/1" class="btn btn-outline-light text-start">
+                            <i class="bi bi-grid-3x3 me-2"></i> Ver Warehouses
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas del Lab -->
+        <div class="col-md-6">
+            <div class="card bg-dark border-secondary shadow">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="text-white mb-0">
+                        <i class="bi bi-tools text-success me-2"></i>Estado del Laboratorio
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 text-center">
+                        <div class="col-3">
+                            <div class="p-3 rounded" style="background: rgba(255,193,7,0.1); border-left: 3px solid #ffc107;">
+                                <h3 class="text-warning mb-1">{{ stats_lab.c_pendientes }}</h3>
+                                <small class="text-white">Pendientes</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-3 rounded" style="background: rgba(40,167,69,0.1); border-left: 3px solid #28a745;">
+                                <h3 class="text-success mb-1">{{ stats_lab.c_reparacion }}</h3>
+                                <small class="text-white">En Proceso</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-3 rounded" style="background: rgba(23,162,184,0.1); border-left: 3px solid #17a2b8;">
+                                <h3 class="text-info mb-1">{{ stats_lab.c_stock }}</h3>
+                                <small class="text-white">Reparados</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-3 rounded" style="background: rgba(220,53,69,0.1); border-left: 3px solid #dc3545;">
+                                <h3 class="text-danger mb-1">{{ stats_lab.c_scrap }}</h3>
+                                <small class="text-white">Scrap</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actividad Reciente -->
+        <div class="col-md-6">
+            <div class="card bg-dark border-secondary shadow">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="text-white mb-0">
+                        <i class="bi bi-clock-history text-info me-2"></i>Actividad Reciente
+                    </h5>
+                </div>
+                <div class="card-body" style="max-height: 250px; overflow-y: auto;">
+                    {% for mov in movimientos_recientes %}
+                    <div class="d-flex align-items-start mb-3 pb-3 border-bottom border-secondary">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="bi bi-arrow-right text-white"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="text-white mb-1 small">{{ mov.accion }}</h6>
+                            <p class="text-white small mb-1">{{ mov.referencia_miner }}</p>
+                            <small class="text-white" style="font-size: 0.75rem;">
+                                {{ mov.fecha_hora.strftime('%H:%M') if mov.fecha_hora else 'N/A' }}
+                            </small>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-white text-center">No hay actividad reciente</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Manejo de Personal -->
+        <div class="col-md-12">
+            <div class="card bg-dark border-secondary shadow">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="text-white mb-0">
+                        <i class="bi bi-people-fill text-warning me-2"></i>Manejo de Personal
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% include 'partials/personal_grid.html' %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div>
+</div>
+
+<!-- Modal global para evitar problemas de z-index/overflow -->
+{% include 'partials/modal_asignar_personal.html' %}
+
+<script>
+    // Función global para abrir el modal
+    function abrirModalAsignacion(id, nombre, whs, hydro) {
+        // Set user info
+        document.getElementById('assign_user_id').value = id;
+        document.getElementById('assign_user_name').textContent = nombre;
+        
+        // Reset forms
+        document.querySelectorAll('#modalAsignacion input[type="checkbox"]').forEach(c => c.checked = false);
+        
+        // Set WH values
+        if (whs) {
+            const whList = whs.split(',');
+            whList.forEach(wh => {
+                const check = document.getElementById(`wh_${wh}`);
+                if (check) check.checked = true;
+            });
+        }
+        
+        // Set Hydro values
+        if (document.getElementById('hydro_input')) {
+            document.getElementById('hydro_input').value = hydro;
+        }
+
+        // Show modal safely
+        const modalEl = document.getElementById('modalAsignacion');
+        if (modalEl) {
+            if (typeof bootstrap !== 'undefined') {
+                let modal = bootstrap.Modal.getInstance(modalEl);
+                if (!modal) {
+                    modal = new bootstrap.Modal(modalEl);
+                }
+                modal.show();
+            } else {
+                alert('Error: Bootstrap no cargado');
+            }
+        }
+    }
+
+    // Función global para guardar
+    function guardarAsignacion() {
+        const userId = document.getElementById('assign_user_id').value;
+        const saveBtn = document.querySelector('#modalAsignacion .btn-primary');
+        const originalText = saveBtn.innerHTML;
+        
+        // Disable button to prevent double submit/lag perception
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+        
+        // Collect WHs
+        const whSelected = [];
+        document.querySelectorAll('input[name="assign_wh"]:checked').forEach(c => {
+            whSelected.push(c.value);
+        });
+        
+        // Collect Hydro
+        let hydroContainers = [];
+        const hydroInput = document.getElementById('hydro_input');
+        if (hydroInput && hydroInput.value.trim()) {
+            hydroContainers = hydroInput.value.split(',').map(x => x.trim()).filter(x => x !== '');
+        }
+        
+        // Send API request
+        fetch('/api/personal/assign', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                wh_list: whSelected,
+                hydro_list: hydroContainers
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                location.reload(); 
+            } else {
+                alert('Error: ' + (data.message || 'Error desconocido'));
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error de conexión');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+        });
+    }
+</script>
+
+<style>
+    .card {
+        transition: transform 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+    }
+    /* Asegurar que el modal esté por encima de todo */
+    .modal-backdrop {
+        z-index: 1050;
+    }
+    .modal {
+        z-index: 1055;
+    }
+</style>
+{% endblock %}

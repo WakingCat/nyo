@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-warning fw-bold"><i class="bi bi-tools me-2"></i>MESA DE TRABAJO</h2>
+        <a href="{{ url_for('lab.dashboard') }}" class="btn btn-outline-light">Volver</a>
+    </div>
+
+    <div class="row g-4" id="equipos-grid"
+         hx-get="{{ url_for('lab.reparacion_partial') }}"
+         hx-trigger="every 5s"
+         hx-swap="innerHTML">
+        {% for m in equipos %}
+        <div class="col-md-6 col-lg-4" id="equipo-{{ m.id }}">
+            <div class="card bg-dark border-secondary h-100 shadow">
+                <div class="card-header bg-black border-secondary d-flex justify-content-between">
+                    <span class="text-white fw-bold">{{ m.sn_fisica }}</span>
+                    <span class="badge bg-warning text-dark">En Proceso</span>
+                </div>
+                <div class="card-body">
+                    <p class="text-white small mb-1">MODELO</p>
+                    <h5 class="text-white mb-3">{{ m.modelo }}</h5>
+                    
+                    <p class="text-white small mb-1">FALLA INICIAL</p>
+                    <div class="p-2 bg-black rounded text-danger border border-secondary mb-3">
+                        <i class="bi bi-exclamation-circle me-1"></i> {{ m.diagnostico_detalle }}
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <!-- Botón Finalizar con HTMX -->
+                        <button class="btn btn-success"
+                                hx-post="/api/lab/terminar"
+                                hx-vals='{"id": "{{ m.id }}", "solucion": "Reparación completada"}'
+                                hx-confirm="¿Marcar como reparado y mover a Stock Lab?"
+                                hx-target="#equipo-{{ m.id }}"
+                                hx-swap="outerHTML swap:500ms"
+                                hx-indicator="#spinner-terminar-{{ m.id }}">
+                            <i class="bi bi-check-lg me-2"></i> REPARADO (A STOCK)
+                            <span id="spinner-terminar-{{ m.id }}" class="htmx-indicator">
+                                <span class="spinner-border spinner-border-sm ms-2"></span>
+                            </span>
+                        </button>
+                        
+                        <!-- Botón Scrap - Abre modal con HTMX -->
+                        <button class="btn btn-outline-danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalScrap"
+                                data-miner-id="{{ m.id }}"
+                                data-miner-sn="{{ m.sn_fisica }}"
+                                onclick="setScrapData('{{ m.id }}', '{{ m.sn_fisica }}')">
+                            <i class="bi bi-x-lg me-2"></i> NO TIENE ARREGLO (BAJA)
+                        </button>
+                    </div>
+                </div>
+                <div class="card-footer bg-black border-secondary text-white small">
+                    Técnico: {{ m.responsable or 'Sin asignar' }}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center py-5 text-white">
+            <h4><i class="bi bi-cup-hot display-4"></i></h4>
+            <p>La mesa de trabajo está limpia. Ve a Solicitudes para buscar más trabajo.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal de Scrap mejorado con HTMX -->
+<div class="modal fade" id="modalScrap" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-danger text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-danger">DAR DE BAJA</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Confirmar baja para: <strong id="scrap-sn" class="text-warning"></strong></p>
+                <input type="hidden" id="scrap-id">
+                <div class="d-grid gap-2" id="scrap-buttons">
+                    <!-- Botones se agregan dinámicamente con HTMX -->
+                    <button class="btn btn-outline-warning text-start p-3"
+                            id="btn-piezas"
+                            hx-post="/api/lab/scrap"
+                            hx-vals='js:{id: document.getElementById("scrap-id").value, tipo: "piezas", motivo: prompt("Motivo de la baja:", "Irreparable") || "Irreparable"}'
+                            hx-confirm="¿Confirmar como donante de piezas?"
+                            data-bs-dismiss="modal"
+                            hx-indicator="#spinner-scrap">
+                        <div class="fw-bold">GUARDAR PARA PIEZAS</div>
+                        <small>Donante de repuestos.</small>
+                    </button>
+                    <button class="btn btn-outline-danger text-start p-3"
+                            id="btn-basura"
+                            hx-post="/api/lab/scrap"
+                            hx-vals='js:{id: document.getElementById("scrap-id").value, tipo: "basura", motivo: prompt("Motivo de la baja:", "Sin reparación posible") || "Sin reparación"}'
+                            hx-confirm="¿Confirmar desecho definitivo?"
+                            data-bs-dismiss="modal"
+                            hx-indicator="#spinner-scrap">
+                        <div class="fw-bold">DESECHAR (BASURA)</div>
+                        <small>Salida definitiva.</small>
+                    </button>
+                </div>
+                <div id="spinner-scrap" class="htmx-indicator text-center mt-3">
+                    <span class="spinner-border text-danger"></span>
+                    <p class="text-white mt-2">Procesando baja...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Mínimo JS necesario para pasar datos al modal
+function setScrapData(id, sn) {
+    document.getElementById('scrap-id').value = id;
+    document.getElementById('scrap-sn').innerText = sn;
+    
+    // Actualizar hx-target dinámicamente para eliminar la tarjeta correcta
+    const btns = document.querySelectorAll('#scrap-buttons button');
+    btns.forEach(btn => {
+        btn.setAttribute('hx-target', `#equipo-${id}`);
+        btn.setAttribute('hx-swap', 'outerHTML swap:500ms');
+    });
+}
+</script>
+
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+    }
+    .htmx-request.htmx-indicator {
+        display: inline-block;
+    }
+    
+    /* Animación de salida */
+    .htmx-swapping {
+        opacity: 0;
+        transform: scale(0.95);
+        transition: all 500ms ease-out;
+    }
+    
+    /* Efecto de carga en botones */
+    .htmx-request {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-0">
+    {% include 'partials/miner_grid.html' %}
+    
+    <!-- Sección de Mineros Pendientes de Colocación con auto-refresh -->
+    <div id="pendientes-container"
+         hx-get="{{ url_for('dashboard.pendientes_partial', wh=wh_actual) }}"
+         hx-trigger="every 5s"
+         hx-swap="innerHTML">
+        {% include 'partials/pendientes_colocacion.html' %}
+    </div>
+    
+    <!-- Modal Insertar -->
+    <div class="modal fade" id="modalInsertar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark border-warning text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning">Insertar Minero en Rack</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Minero: <strong id="insertar-sn" class="text-white"></strong></p>
+                    <input type="hidden" id="insertar-id">
+                    
+                    <form id="formInsertar">
+                        <div class="mb-3">
+                            <label class="form-label text-white small">Warehouse</label>
+                            <input type="text" class="form-control bg-black text-white border-secondary" value="WH {{ wh_actual }}" readonly>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-4">
+                                <label class="text-white small">Rack</label>
+                                <input type="number" id="insertar-rack" class="form-control bg-black text-white border-secondary" value="{{ rack_actual }}" readonly>
+                            </div>
+                            <div class="col-4">
+                                <label class="text-white small">Fila *</label>
+                                <input type="number" id="insertar-fila" class="form-control bg-black text-white border-secondary" required min="1" max="50">
+                            </div>
+                            <div class="col-4">
+                                <label class="text-white small">Columna *</label>
+                                <input type="number" id="insertar-columna" class="form-control bg-black text-white border-secondary" required min="1" max="15">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" 
+                            class="btn btn-warning text-dark fw-bold"
+                            hx-post="/api/mineros/insertar"
+                            hx-vals="js:{
+                                id: document.getElementById('insertar-id').value,
+                                wh: {{ wh_actual }},
+                                rack: document.getElementById('insertar-rack').value,
+                                fila: document.getElementById('insertar-fila').value,
+                                columna: document.getElementById('insertar-columna').value
+                            }"
+                            hx-confirm="¿Confirmar ubicación?"
+                            data-bs-dismiss="modal">
+                        <i class="bi bi-save me-2"></i> GUARDAR UBICACIÓN
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function setInsertarData(id, sn) {
+        document.getElementById('insertar-id').value = id;
+        document.getElementById('insertar-sn').textContent = sn;
+    }
+    </script>
+</div>
+{% endblock %}

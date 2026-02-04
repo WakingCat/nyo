@@ -1,0 +1,26 @@
+<div class="modal-header border-secondary bg-black">
+    <h5 class="modal-title text-warning">Asignar Reemplazo</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body bg-dark p-4">
+    <div class="alert alert-info border-0 mb-4 text-white" style="background-color: rgba(13, 202, 240, 0.1);">
+        <i class="bi bi-info-circle me-2"></i> Estás asignando un reemplazo para la posición 
+        <strong>WH{{ m.warehouse_id }}-R{{ m.rack_id }} ({{ m.fila }}-{{ m.columna }})</strong>
+    </div>
+
+    <form hx-post="/api/lab/asignar" hx-target="body" onsubmit="cerrarModal()">
+        <input type="hidden" name="solicitud_id" value="{{ m.id }}">
+        
+        <div class="mb-4">
+            <label class="form-label text-white small fw-bold">SN DEL REEMPLAZO</label>
+            <input type="text" name="sn_reemplazo" class="form-control form-control-lg bg-black text-white border-success" placeholder="Escanea o escribe el SN..." required autofocus>
+        </div>
+
+        <div class="mb-3">
+             <label class="form-label text-white small fw-bold">URL / IP (Opcional)</label>
+             <input type="text" name="ip_reemplazo" class="form-control bg-black text-white border-secondary">
+        </div>
+
+        <button type="submit" class="btn btn-success w-100 fw-bold py-2">CONFIRMAR ASIGNACIÓN</button>
+    </form>
+</div>

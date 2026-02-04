@@ -1,0 +1,133 @@
+<form hx-post="/traslados/aprobar-masivo{% if sector_actual %}?sector={{ sector_actual }}{% endif %}"
+      hx-target="#solicitudes-container"
+      hx-swap="innerHTML">
+    
+    <table class="table table-dark table-hover mb-0 align-middle">
+        <thead>
+            <tr class="text-secondary small text-uppercase">
+                <th class="ps-4" style="width: 50px;">
+                    <input type="checkbox" id="select-all" class="form-check-input">
+                </th>
+                <th>Equipo</th>
+                <th>Sector</th>
+                <th>Origen → Destino</th>
+                <th>Solicitante</th>
+                <th>Motivo</th>
+                <th>Fecha</th>
+                <th class="text-end pe-4">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in solicitudes %}
+            <tr id="solicitud-{{ s.id }}">
+                <td class="ps-4">
+                    <input type="checkbox" name="ids" value="{{ s.id }}" class="form-check-input solicitud-check">
+                </td>
+                <td>
+                    <div class="fw-bold">{{ s.miner.sn_fisica }}</div>
+                    <div class="small text-white">{{ s.miner.modelo }}</div>
+                </td>
+                <td>
+                    {% if s.sector == 'WH' %}
+                        <span class="badge bg-warning text-dark">WH</span>
+                    {% else %}
+                        <span class="badge bg-info">Hydro</span>
+                    {% endif %}
+                    {% if s.estado == 'pendiente_coordinador_hydro' %}
+                        <br><small class="text-info">📋 Pend. Coord. Hydro</small>
+                    {% elif s.estado == 'pendiente_coordinador' %}
+                        <br><small class="text-warning">📋 Pend. Coordinador</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="text-warning">{{ s.origen_str }}</span>
+                    <i class="bi bi-arrow-right mx-2"></i>
+                    <span class="text-success">{{ s.destino }}</span>
+                </td>
+                <td>{{ s.solicitante.username }}</td>
+                <td class="small">{{ s.motivo[:50] }}{% if s.motivo|length > 50 %}...{% endif %}</td>
+                <td class="small text-white">{{ s.fecha_solicitud.strftime('%d/%m %H:%M') }}</td>
+                <td class="text-end pe-4">
+                    <div class="btn-group btn-group-sm">
+                        {% if s.estado == 'pendiente_coordinador_hydro' %}
+                        {# Solicitud Hydro pendiente de Coordinador Hydro #}
+                        <button type="button"
+                                class="btn btn-info"
+                                hx-post="/traslados/aprobar-hydro/{{ s.id }}"
+                                hx-confirm="¿Aprobar traslado de {{ s.miner.sn_fisica }} (Coord. Hydro)?"
+                                hx-target="#solicitud-{{ s.id }}"
+                                hx-swap="outerHTML swap:300ms"
+                                hx-indicator="#spinner-{{ s.id }}">
+                            <i class="bi bi-check-lg"></i> Hydro
+                            <span id="spinner-{{ s.id }}" class="htmx-indicator spinner-border spinner-border-sm ms-1"></span>
+                        </button>
+                        {% else %}
+                        {# Solicitud normal #}
+                        <button type="button"
+                                class="btn btn-success"
+                                hx-post="/traslados/aprobar/{{ s.id }}"
+                                hx-confirm="¿Aprobar traslado de {{ s.miner.sn_fisica }}?"
+                                hx-target="#solicitud-{{ s.id }}"
+                                hx-swap="outerHTML swap:300ms"
+                                hx-indicator="#spinner-{{ s.id }}">
+                            <i class="bi bi-check-lg"></i>
+                            <span id="spinner-{{ s.id }}" class="htmx-indicator spinner-border spinner-border-sm ms-1"></span>
+                        </button>
+                        {% endif %}
+                        <button type="button"
+                                class="btn btn-danger"
+                                hx-post="/traslados/rechazar/{{ s.id }}"
+                                hx-confirm="¿Rechazar traslado de {{ s.miner.sn_fisica }}?"
+                                hx-target="#solicitud-{{ s.id }}"
+                                hx-swap="outerHTML swap:300ms">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="text-center py-5 text-white">
+                    <i class="bi bi-inbox display-4"></i>
+                    <p class="mt-2">No hay solicitudes pendientes</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if solicitudes %}
+    <div class="p-3 bg-black border-top border-secondary">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-all me-2"></i>
+            Aprobar Seleccionados
+        </button>
+        <span class="text-white ms-3 small">
+            <span id="selected-count">0</span> seleccionados
+        </span>
+    </div>
+    {% endif %}
+</form>
+
+<script>
+// Seleccionar/deseleccionar todos
+document.getElementById('select-all')?.addEventListener('change', function(e) {
+    const checkboxes = document.querySelectorAll('.solicitud-check');
+    checkboxes.forEach(cb => cb.checked = e.target.checked);
+    updateSelectedCount();
+});
+
+// Actualizar contador de seleccionados
+function updateSelectedCount() {
+    const checked = document.querySelectorAll('.solicitud-check:checked').length;
+    const counter = document.getElementById('selected-count');
+    if (counter) counter.textContent = checked;
+}
+
+// Escuchar cambios en checkboxes
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('solicitud-check')) {
+        updateSelectedCount();
+    }
+});
+</script>

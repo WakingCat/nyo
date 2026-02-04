@@ -1,0 +1,41 @@
+{% set status = m.proceso_estado if m else 'vacio' %}
+{% set tiene_rma = m.diagnostico_detalle if m else False %}
+
+<div id="cell-{{ f }}-{{ c }}"
+     class="miner-card {% if status == 'Conciliando' %}status-conciliando{% elif status == 'en_laboratorio' or tiene_rma %}status-in-rma{% elif m %}status-ok{% else %}status-empty{% endif %}"
+onclick="abrirModal({{ wh_actual }}, {{ rack_actual }}, {{ f }}, {{ c }})"
+     hx-trigger="minerRemoved from:body"
+     hx-get="/api/check-miner/{{ wh_actual }}/{{ rack_actual }}/{{ f }}/{{ c }}"
+     hx-swap="outerHTML"
+     hx-vals='js:{"event_wh": event.detail.wh, "event_rack": event.detail.rack, "event_fila": event.detail.fila, "event_columna": event.detail.columna}'>
+
+    {% set display_f = f %}
+    {% if wh_actual == 100 and rack_actual is defined and rack_actual % 2 == 0 %}
+        {% set display_f = f + 7 %}
+    {% endif %}
+    <span class="pos-label">{{ display_f }}-{{ c }}</span>
+
+    {% if m %}
+        {% if status == 'Conciliando' %}
+            <div class="text-center w-100">
+                <i class="bi bi-tools mb-1 text-warning" style="font-size: 1rem;"></i>
+                <span class="d-block model-tag text-warning" style="font-size: 0.65rem;">{{ m.modelo }}</span>
+                <span class="d-block text-white" style="font-size: 0.55rem;">{{ m.sn_fisica[:8] }}...</span>
+                <span class="badge bg-warning text-dark mt-1" style="font-size: 0.5rem;">CONCILIANDO</span>
+            </div>
+        {% elif status == 'en_laboratorio' or tiene_rma %}
+            <div class="text-center w-100">
+                <i class="bi bi-wrench-adjustable mb-1 text-danger" style="font-size: 1rem;"></i>
+                <span class="d-block model-tag text-danger" style="font-size: 0.65rem;">{{ m.modelo }}</span>
+                <span class="d-block text-white" style="font-size: 0.55rem;">{{ m.sn_fisica[:8] }}...</span>
+                <span class="badge bg-danger mt-1" style="font-size: 0.5rem;">CON RMA</span>
+            </div>
+        {% else %}
+            <i class="bi bi-cpu mb-1 text-secondary" style="font-size: 1rem;"></i>
+            <span class="d-block model-tag">{{ m.modelo }}</span>
+            <span class="d-block hash-tag">{{ m.ths }} TH</span>
+        {% endif %}
+    {% else %}
+        <i class="bi bi-plus-lg text-white" style="font-size: 1.2rem;"></i>
+    {% endif %}
+</div>

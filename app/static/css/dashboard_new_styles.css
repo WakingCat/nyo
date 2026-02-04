@@ -1,0 +1,22 @@
+/* --- ESTADO 4: CONCILIANDO (Reparación In-Situ) --- */
+.status-conciliando {
+    background: repeating-linear-gradient(135deg,
+            rgba(255, 193, 7, 0.1),
+            rgba(255, 193, 7, 0.1) 10px,
+            rgba(22, 27, 34, 0.8) 10px,
+            rgba(22, 27, 34, 0.8) 20px);
+    border: 1px solid var(--accent);
+}
+
+.status-conciliando::after {
+    content: 'FIX';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 0.5rem;
+    background: var(--accent);
+    color: black;
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: bold;
+}

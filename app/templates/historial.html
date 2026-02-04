@@ -1,0 +1,25 @@
+<table class="table table-dark table-striped">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+            <th>Ubicación</th>
+            <th>Cambios</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for h in historial %}
+        <tr>
+            <td>{{ h.fecha_hora.strftime('%H:%M:%S') }}</td>
+            <td><strong>{{ h.usuario.username }}</strong></td>
+            <td><span class="badge bg-info">{{ h.accion }}</span></td>
+            <td>{{ h.referencia_miner }}</td>
+            <td class="small">
+                <span class="text-danger">- {{ h.datos_anteriores }}</span><br>
+                <span class="text-success">+ {{ h.datos_nuevos }}</span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

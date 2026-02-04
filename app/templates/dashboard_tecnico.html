@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="mb-4">
+        <h2 class="text-white fw-bold mb-1">
+            <i class="bi bi-person-workspace me-2" style="color: #4ecdc4;"></i>
+            Panel de Técnico
+        </h2>
+        <p class="text-white">Mis warehouses y solicitudes</p>
+    </div>
+
+    <div class="row g-4">
+        <!-- Mis Warehouses Asignados -->
+        <div class="col-md-8">
+            <div class="card bg-dark border-0 shadow-lg h-100" style="background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);">
+                <div class="card-header bg-transparent border-0 pt-4 px-4">
+                    <h4 class="text-white mb-1">
+                        <i class="bi bi-geo-alt-fill me-2" style="color: #4ecdc4;"></i>
+                        Mis Warehouses Asignados
+                    </h4>
+                    <p class="text-white-50 small mb-0">Acceso rápido a tus zonas</p>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    <div class="row g-3">
+                        {% for wh in mis_warehouses %}
+                        <div class="col-md-4">
+                            <a href="/dashboard/{{ wh }}/1" class="text-decoration-none">
+                                <div class="p-4 rounded text-center" style="background: rgba(78, 205, 196, 0.15); border: 2px solid #4ecdc4; transition: all 0.3s;">
+                                    <i class="bi bi-building display-4 text-info mb-2"></i>
+                                    <h3 class="text-white mb-0">WH {{ wh }}</h3>
+                                    <small class="text-white">Click para acceder</small>
+                                </div>
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="col-12 text-center py-4">
+                            <i class="bi bi-inbox display-1 text-white opacity-25"></i>
+                            <p class="text-white mt-3">No tienes warehouses asignados</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Acciones Rápidas -->
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary shadow h-100">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="text-white mb-0">
+                        <i class="bi bi-lightning-fill text-warning me-2"></i>Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <!-- Botón para Conciliación de Piezas -->
+                        <button class="btn btn-success btn-lg text-white fw-bold" 
+                                onclick="abrirModalBusquedaConciliacion()">
+                            <i class="bi bi-tools me-2"></i> 
+                            Conciliación de Piezas
+                        </button>
+
+                        <!-- Botón para crear solicitud de traslado -->
+                        <button class="btn btn-warning btn-lg text-dark fw-bold" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalCrearSolicitud">
+                            <i class="bi bi-plus-circle-fill me-2"></i> 
+                            Crear Solicitud de Traslado
+                        </button>
+                        
+                        <a href="{{ url_for('transfers.panel') }}" class="btn btn-outline-info">
+                            <i class="bi bi-list-check me-2"></i> 
+                            Ver Mis Solicitudes
+                        </a>
+                        
+                        <hr class="border-secondary">
+                        
+                        <a href="{{ url_for('main.monitor') }}" class="btn btn-outline-light text-start">
+                            <i class="bi bi-clock-history me-2"></i> 
+                            Historial
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mis Solicitudes Recientes -->
+        <div class="col-12">
+            <div class="card bg-dark border-secondary shadow">
+                <div class="card-header bg-transparent border-secondary">
+                    <h5 class="text-white mb-0">
+                        <i class="bi bi-file-earmark-text text-info me-2"></i>
+                        Mis Solicitudes de Traslado Recientes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr class="text-white small">
+                                    <th>Fecha</th>
+                                    <th>Minero</th>
+                                    <th>Origen</th>
+                                    <th>Destino</th>
+                                    <th>Motivo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sol in mis_solicitudes %}
+                                <tr>
+                                    <td class="small">{{ sol.fecha_solicitud.strftime('%d/%m %H:%M') if sol.fecha_solicitud else 'N/A' }}</td>
+                                    <td class="text-white">{{ sol.miner.sn_fisica if sol.miner else 'N/A' }}</td>
+                                    <td class="small">{{ sol.origen_str }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ sol.destino }}</span>
+                                    </td>
+                                    <td class="small text-white">{{ sol.motivo[:40] }}...</td>
+                                    <td>
+                                        {% if sol.estado == 'pendiente_lab' %}
+                                        <span class="badge bg-secondary">Pend. Lab</span>
+                                        {% elif sol.estado == 'pendiente_coordinador' %}
+                                        <span class="badge bg-warning text-dark">Pend. Coord.</span>
+                                        {% elif sol.estado == 'pendiente_coordinador_hydro' %}
+                                        <span class="badge bg-primary">Pend. Coord. Hydro</span>
+                                        {% elif sol.estado == 'pendiente' %}
+                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                        {% elif sol.estado == 'aprobado' %}
+                                        <span class="badge bg-success">Aprobado</span>
+                                        {% elif sol.estado == 'ejecutado' %}
+                                        <span class="badge bg-info">Ejecutado</span>
+                                        {% elif sol.estado == 'rechazado' %}
+                                        <span class="badge bg-danger">Rechazado</span>
+                                        {% elif sol.estado == 'rechazado_lab' %}
+                                        <span class="badge bg-danger">Rechazado Lab</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ sol.estado }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-white py-4">
+                                        No tienes solicitudes recientes
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para crear solicitud (placeholder - implementar funcionalidad) -->
+<div class="modal fade" id="modalCrearSolicitud" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white border-warning">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-warning">
+                    <i class="bi bi-plus-circle me-2"></i>Nueva Solicitud de Traslado
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-white">Esta funcionalidad se implementará desde el dashboard del warehouse al hacer click en un minero específico con diagnóstico RMA registrado.</p>
+                <p class="text-white-50 small">
+                    <strong>Proceso:</strong><br>
+                    1. Ve a tu warehouse<br>
+                    2. Encuentra el minero<br>
+                    3. Registra RMA si aún no lo hiciste<br>
+                    4. Solicita traslado desde el menú del minero
+                </p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card a:hover > div {
+        background: rgba(78, 205, 196, 0.3) !important;
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}

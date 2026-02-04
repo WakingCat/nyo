@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <h2 class="text-warning text-center mb-5 fw-bold">PORTAL DE GESTIÓN - N&O TECH</h2>
+    <div class="row g-4">
+        <div class="row g-4">
+            {% if session.get('role') in ['Site Manager', 'Coordinador'] %}
+        <div class="col-md-3">
+            <a href="{{ url_for('main.monitor') }}" class="card-portal text-decoration-none border-warning shadow-warning">
+                <div class="text-warning mb-2">
+                    <i class="bi bi-activity fs-1"></i>
+                </div>
+                <h4 class="mt-3 text-warning">MONITOR</h4>
+                <p class="small text-white">Auditoría y Logs</p>
+            </a>
+        </div>
+        {% endif %}
+        </div>
+        <div class="col-md-3">
+            <a href="/dashboard/1/1" class="card-portal text-decoration-none">
+                <i class="bi bi-wind fs-1 text-info"></i>
+                <h4 class="mt-3">WH AIRE</h4>
+                <p class="small text-white">Gestión de Racks y Diagnóstico N1</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <div class="card-portal disabled">
+                <i class="bi bi-droplet-fill fs-1 text-primary"></i>
+                <h4 class="mt-3">HYDRO</h4>
+                <p class="small text-white">Próximamente: Monitoreo de inmersión</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-portal">
+                <i class="bi bi-box-seam fs-1 text-warning"></i>
+                <h4 class="mt-3">DEPÓSITO</h4>
+                <p class="small text-white">Stock de repuestos y piezas</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('lab.dashboard') }}" class="card-portal text-decoration-none">
+                <i class="bi bi-wrench-adjustable fs-1 text-success"></i>
+                <h4 class="mt-3">LABORATORIO</h4>
+                <p class="small text-white">Reparaciones y Conciliación</p>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.card-portal {
+    background: #1f2833; border: 1px solid #45a29e; border-radius: 15px;
+    padding: 30px; text-align: center; transition: 0.3s; color: white; display: block;
+}
+.card-portal:hover { transform: translateY(-10px); border-color: #66fcf1; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+.disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+{% endblock %}

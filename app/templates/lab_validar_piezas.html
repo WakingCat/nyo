@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Validar Piezas de Conciliación{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-warning"><i class="fas fa-search-dollar"></i> Validación de Piezas</h2>
+                <p class="text-muted">Aprueba el uso de repuestos para conciliaciones In-Situ o Pruebas en Lab.</p>
+            </div>
+            <a href="{{ url_for('lab.dashboard') }}" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left"></i> Volver al Hub
+            </a>
+        </div>
+    </div>
+
+    <div class="card bg-dark text-white border-warning">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr class="text-white-50">
+                            <th>ID</th>
+                            <th>Solicitante</th>
+                            <th>Minero / Ubicación</th>
+                            <th>Pieza Solicitada</th>
+                            <th>Modalidad</th>
+                            <th>Motivo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-validaciones">
+                        {% if solicitudes %}
+                            {% for sol in solicitudes %}
+                            <tr id="row-{{ sol.id }}">
+                                <td>#{{ sol.id }}</td>
+                                <td>
+                                    <strong>{{ sol.solicitante.username }}</strong><br>
+                                    <small class="text-muted">{{ sol.solicitante.role.nombre_puesto }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div>
+                                            <strong>{{ sol.miner.sn_fisica }}</strong><br>
+                                            <small class="text-info">WH{{ sol.wh_origen }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-warning fw-bold">{{ sol.tipo_pieza }}</td>
+                                <td>
+                                    {% if sol.tipo_conciliacion == 'WH' %}
+                                        <span class="badge bg-secondary">In-Situ (WH)</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Prueba en LAB</span>
+                                        <div class="small text-muted mt-1">Incluye traslado</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ sol.comentario }}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-success btn-sm"
+                                                hx-post="{{ url_for('lab.aprobar_pieza', id=sol.id) }}"
+                                                hx-confirm="¿Aprobar esta pieza? Se enviará solicitud al depósito."
+                                                hx-target="#row-{{ sol.id }}"
+                                                hx-swap="outerHTML">
+                                            <i class="fas fa-check"></i> Aprobar
+                                        </button>
+                                        <button class="btn btn-danger btn-sm"
+                                                hx-post="{{ url_for('lab.rechazar_pieza', id=sol.id) }}"
+                                                hx-confirm="¿Rechazar solicitud?"
+                                                hx-target="#row-{{ sol.id }}"
+                                                hx-swap="outerHTML">
+                                            <i class="fas fa-times"></i> Rechazar
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-5">
+                                    <i class="fas fa-check-circle fa-3x mb-3 text-secondary"></i><br>
+                                    No hay solicitudes pendientes de validación.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

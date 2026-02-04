@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header con filtros -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white fw-bold">
+            <i class="bi bi-arrow-left-right me-2"></i>
+            SOLICITUDES DE TRASLADO
+        </h2>
+        <a href="{{ url_for('main.index') }}" class="btn btn-outline-light">Volver</a>
+    </div>
+
+    <!-- Contadores y Filtros -->
+    <div class="card bg-dark border-secondary mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex gap-3"
+                         id="contadores-panel"
+                         hx-get="/traslados/contadores-partial"
+                         hx-trigger="transferApproved from:body"
+                         hx-swap="innerHTML">
+                        {% include 'partials/contadores_traslado.html' %}
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <!-- Filtros por sector -->
+                    <div class="btn-group" role="group">
+                        <button type="button" 
+                                class="btn {% if sector_actual == 'WH' %}btn-warning{% else %}btn-outline-warning{% endif %}"
+                                hx-get="/traslados/panel-partial?sector=WH"
+                                hx-target="#solicitudes-container"
+                                hx-swap="innerHTML">
+                            WH
+                        </button>
+                        <button type="button" 
+                                class="btn {% if sector_actual == 'Hydro' %}btn-info{% else %}btn-outline-info{% endif %}"
+                                hx-get="/traslados/panel-partial?sector=Hydro"
+                                hx-target="#solicitudes-container"
+                                hx-swap="innerHTML">
+                            Hydro
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de solicitudes con auto-refresh -->
+    <div class="card bg-dark border-secondary">
+        <div class="card-body p-0">
+            <div id="solicitudes-container"
+                 hx-get="/traslados/panel-partial{% if sector_actual %}?sector={{ sector_actual }}{% endif %}"
+                 hx-trigger="every 5s"
+                 hx-swap="innerHTML">
+                {% include 'partials/solicitudes_table.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+    }
+    .htmx-swapping {
+        opacity: 0;
+        transition: opacity 300ms ease-out;
+    }
+</style>
+{% endblock %}

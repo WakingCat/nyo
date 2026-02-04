@@ -1,0 +1,65 @@
+<!-- Modal Asignación de Personal -->
+<div class="modal fade" id="modalAsignacion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title text-white">
+                    Asignar Ubicaciones: <span id="assign_user_name" class="text-warning"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assign_user_id">
+                
+                <div class="row">
+                    {% if can_manage_wh %}
+                    <!-- Columna WH -->
+                    <div class="col-md-6 border-end border-secondary">
+                        <h6 class="text-warning mb-3"><i class="bi bi-building me-2"></i>Warehouses (WH)</h6>
+                        <div class="card bg-secondary bg-opacity-10 border-0">
+                            <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                                <div class="row g-2">
+                                    {% for i in range(1, 11) %}
+                                    <div class="col-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="{{ i }}" id="wh_{{ i }}" name="assign_wh">
+                                            <label class="form-check-label text-white" for="wh_{{ i }}">
+                                                WH {{ i }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if can_manage_hydro %}
+                    <!-- Columna Hydro -->
+                    <div class="col-md-6">
+                        <h6 class="text-info mb-3"><i class="bi bi-droplet-fill me-2"></i>Hydro (Contenedores)</h6>
+                        <div class="mb-3">
+                            <label class="form-label text-white small">Ingrese números de contenedor separados por coma (Ej: 1,2,5)</label>
+                            <input type="text" class="form-control bg-dark text-white border-secondary" 
+                                   id="hydro_input" placeholder="1, 2, 3...">
+                            <div class="form-text text-muted">Contenedores válidos del 1 al 110</div>
+                        </div>
+                        
+                        <div class="alert alert-info bg-opacity-10 border-info py-2">
+                            <small>
+                                <i class="bi bi-info-circle me-1"></i>
+                                Los técnicos verán estos contenedores en su dashboard.
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarAsignacion()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>

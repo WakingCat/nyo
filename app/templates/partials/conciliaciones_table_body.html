@@ -1,0 +1,57 @@
+{% if solicitudes %}
+    {% for sol in solicitudes %}
+    <tr>
+        <td>#{{ sol.id }}</td>
+        <td>
+            <strong>{{ sol.miner.sn_fisica }}</strong><br>
+            <small class="text-muted">{{ sol.miner.modelo }}</small>
+        </td>
+        <td>{{ sol.tipo_pieza }}</td>
+        <td>
+            {% if sol.tipo_conciliacion == 'WH' %}
+                <span class="badge bg-secondary">In-Situ (WH)</span>
+            {% else %}
+                <span class="badge bg-warning text-dark">Prueba Lab</span>
+            {% endif %}
+        </td>
+        <td>
+            {% if sol.estado == 'pendiente_aprobacion_lab' %}
+                <span class="badge bg-warning text-dark">Pend. Lab</span>
+            {% elif sol.estado == 'pendiente_deposito' %}
+                <span class="badge bg-info text-dark">Pend. Depósito</span>
+            {% elif sol.estado == 'en_camino' %}
+                <span class="badge bg-primary">En Camino</span>
+            {% elif sol.estado == 'recibido' %}
+                <span class="badge bg-success">En Poder del Técnico</span>
+            {% endif %}
+        </td>
+        <td>{{ sol.fecha_solicitud.strftime('%d/%m %H:%M') }}</td>
+        <td>
+            <!-- ACCIONES -->
+            {% if sol.estado == 'en_camino' %}
+                <button type="button" 
+                        class="btn btn-sm btn-primary"
+                        hx-post="{{ url_for('conciliacion_dash.confirmar_recepcion', id=sol.id) }}"
+                        hx-target="#conciliaciones-tbody"
+                        hx-swap="innerHTML"
+                        hx-confirm="¿Confirmar recepción de la pieza?">
+                    <i class="bi bi-box-arrow-in-down"></i> Confirmar Recepción
+                </button>
+            {% elif sol.estado == 'recibido' %}
+                <button class="btn btn-sm btn-success me-1" data-bs-toggle="modal" data-bs-target="#modalExito{{ sol.id }}">
+                    <i class="bi bi-check-lg"></i> Éxito
+                </button>
+                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalCeder{{ sol.id }}">
+                    <i class="bi bi-arrow-return-left"></i> Ceder a Lab
+                </button>
+            {% else %}
+                <span class="text-muted small">Esperando...</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="7" class="text-center text-muted py-4">No tienes solicitudes activas.</td>
+    </tr>
+{% endif %}

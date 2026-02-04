@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white fw-bold"><i class="bi bi-inbox-fill me-2"></i>SOLICITUDES DE RMA</h2>
+        <a href="{{ url_for('lab.dashboard') }}" class="btn btn-outline-light">Volver</a>
+    </div>
+
+    <div class="card bg-dark border-secondary">
+        <div class="card-body p-0">
+            <table class="table table-dark table-hover mb-0 align-middle" id="solicitudes-table">
+                <thead>
+                    <tr class="text-secondary small text-uppercase">
+                        <th class="ps-4">Origen</th>
+                        <th>Equipo</th>
+                        <th>Falla Reportada</th>
+                        <th class="text-end pe-4">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="solicitudes-list"
+                       hx-get="{{ url_for('lab.solicitudes_partial') }}"
+                       hx-trigger="every 5s"
+                       hx-swap="innerHTML">
+                    {% for m in solicitudes %}
+                    <tr id="solicitud-{{ m.id }}">
+                        <td class="ps-4 text-warning">WH {{ m.warehouse_id or '?' }}</td>
+                        <td>
+                            <div class="fw-bold">{{ m.sn_fisica }}</div>
+                            <div class="small text-white">{{ m.modelo }}</div>
+                        </td>
+                        <td class="text-danger">{{ m.diagnostico_detalle }}</td>
+                        <td class="text-end pe-4">
+                            <!-- HTMX en vez de JavaScript -->
+                            <button class="btn btn-primary btn-sm"
+                                    hx-post="/api/lab/iniciar"
+                                    hx-vals='{"id": "{{ m.id }}"}'
+                                    hx-confirm="¿Recibir este equipo e iniciar diagnóstico en la Mesa de Trabajo?"
+                                    hx-target="#solicitud-{{ m.id }}"
+                                    hx-swap="outerHTML swap:500ms"
+                                    hx-indicator="#spinner-{{ m.id }}">
+                                <i class="bi bi-tools"></i> RECIBIR Y REPARAR
+                                <span id="spinner-{{ m.id }}" class="htmx-indicator">
+                                    <span class="spinner-border spinner-border-sm ms-2"></span>
+                                </span>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center py-4 text-white">Sin solicitudes pendientes.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Agregar estilos para el spinner HTMX -->
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: inline-block;
+    }
+    .htmx-request.htmx-indicator {
+        display: inline-block;
+    }
+    
+    /* Animación de salida suave cuando se elimina el elemento */
+    tr.htmx-swapping {
+        opacity: 0;
+        transition: opacity 500ms ease-out;
+    }
+</style>
+{% endblock %}

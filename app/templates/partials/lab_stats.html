@@ -1,0 +1,21 @@
+<div id="badge-pendientes" hx-swap-oob="true" 
+     class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-dark"
+     style="display: {{ 'block' if c_pendientes > 0 else 'none' }}">
+    {{ c_pendientes }}
+</div>
+
+<div id="badge-reparacion" hx-swap-oob="true"
+     class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark border border-dark"
+     style="display: {{ 'block' if c_reparacion > 0 else 'none' }}">
+    {{ c_reparacion }}
+</div>
+
+<div id="badge-stock" hx-swap-oob="true"
+     class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success border border-dark"
+     style="display: {{ 'block' if c_stock > 0 else 'none' }}">
+    {{ c_stock }}
+</div>
+
+<span id="text-scrap" hx-swap-oob="true" class="display-6 fw-bold text-secondary">
+    {{ c_scrap }}
+</span>

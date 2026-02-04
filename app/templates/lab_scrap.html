@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="text-danger mb-4 fw-bold"><i class="bi bi-recycle me-2"></i>CEMENTERIO Y DONANTES</h2>
+
+    <div class="card bg-dark border-secondary">
+        <div class="card-body p-0">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr class="text-secondary small text-uppercase">
+                        <th class="ps-4">SN / Modelo</th>
+                        <th>Destino</th>
+                        <th>Fecha Baja</th>
+                        <th>Motivo / Historial</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in lista %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-white">{{ m.sn_fisica }}</div>
+                            <div class="small text-white">{{ m.modelo }}</div>
+                        </td>
+                        <td>
+                            {% if m.proceso_estado == 'donante_piezas' %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-tools"></i> DONANTE (PIEZAS)</span>
+                            {% else %}
+                                <span class="badge bg-danger"><i class="bi bi-trash"></i> DESECHADO</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ m.fecha_diagnostico.strftime('%d/%m/%Y') if m.fecha_diagnostico else '-' }}</td>
+                        <td class="small text-white">
+                            <a href="#" class="text-info text-decoration-none" onclick="alert('Aquí abrirías el historial completo del equipo')">
+                                Ver historial de vida
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

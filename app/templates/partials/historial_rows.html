@@ -1,0 +1,24 @@
+{% for log in historial %}
+<tr class="align-middle">
+    <td class="small text-white" style="width: 80px;">{{ log.fecha_hora.strftime('%H:%M:%S') }}</td>
+    <td style="width: 200px;">
+        <div class="fw-bold text-white">{{ log.usuario.username }}</div>
+        <div class="text-info" style="font-size: 0.7rem;">{{ log.usuario.role.nombre_puesto }}</div>
+    </td>
+    <td style="width: 150px;">
+        <span class="badge {% if 'RMA' in log.accion %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+            {{ log.accion }}
+        </span>
+    </td>
+    <td class="text-warning fw-bold" style="width: 120px;">{{ log.referencia_miner }}</td>
+    <td class="small">
+        <div class="text-truncate" style="max-width: 400px;" title="{{ log.datos_nuevos }}">
+            {{ log.datos_nuevos }}
+        </div>
+    </td>
+</tr>
+{% else %}
+<tr>
+    <td colspan="5" class="text-center py-5 text-white">No hay movimientos registrados hoy.</td>
+</tr>
+{% endfor %}

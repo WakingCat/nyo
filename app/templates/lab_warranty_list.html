@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-white fw-bold mb-1">
+                <i class="bi bi-calendar-check me-2" style="color: #ffc107;"></i>
+                Garantías de Equipos
+            </h2>
+            <p class="text-white-50">Gestión de vencimientos y ubicación de equipos</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportar">
+                <i class="bi bi-file-earmark-spreadsheet me-2"></i> Importar Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card bg-dark border-secondary shadow mb-4">
+        <div class="card-body py-3">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label text-white-50 small">Buscar por SN</label>
+                    <input type="text" name="q" class="form-control bg-secondary bg-opacity-10 text-white border-secondary" placeholder="SN..." value="{{ request.args.get('q', '') }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-white-50 small">Estado Garantía</label>
+                    <select name="estado" class="form-select bg-secondary bg-opacity-10 text-white border-secondary">
+                        <option value="all">Todos</option>
+                        <option value="vencida" {% if request.args.get('estado') == 'vencida' %}selected{% endif %}>Vencida</option>
+                        <option value="por_vencer" {% if request.args.get('estado') == 'por_vencer' %}selected{% endif %}>Por Vencer (30 días)</option>
+                        <option value="activa" {% if request.args.get('estado') == 'activa' %}selected{% endif %}>Activa</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card bg-dark border-secondary shadow">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="text-white-50 ps-4">Equipo</th>
+                        <th class="text-white-50">Ubicación Actual</th>
+                        <th class="text-white-50">Fecha Vencimiento</th>
+                        <th class="text-white-50">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for miner in miners %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold">{{ miner.sn_fisica }}</div>
+                            <small class="text-white-50">{{ miner.modelo }}</small>
+                        </td>
+                        <td>
+                            {% if miner.warehouse_id %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-geo-alt-fill me-1"></i>WH {{ miner.warehouse_id }}
+                                </span>
+                                <small class="d-block text-white-50 mt-1">Rack {{ miner.rack_id }} | F{{ miner.fila }} C{{ miner.columna }}</small>
+                            {% elif 'LAB' in (miner.ubicacion_str or '') %}
+                                <span class="badge bg-info text-dark">
+                                    <i class="bi bi-tools me-1"></i>LABORATORIO
+                                </span>
+                            {% else %}
+                                <span class="text-muted">Desconocida</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if miner.garantia_vence %}
+                                {{ miner.garantia_vence.strftime('%d-%m-%Y') }}
+                            {% else %}
+                                <span class="text-muted fst-italic">No registrada</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if miner.estado_garantia == 'vencida' %}
+                                <span class="badge bg-danger">VENCIDA</span>
+                            {% elif miner.estado_garantia == 'por_vencer' %}
+                                <span class="badge bg-warning text-dark">POR VENCER</span>
+                            {% elif miner.garantia_vence %}
+                                <span class="badge bg-success">ACTIVA</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-white-50">
+                            No se encontraron equipos
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación -->
+        {% if pagination %}
+        <div class="card-footer border-top border-secondary py-3">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item"><a class="page-link bg-dark border-secondary text-white" href="{{ url_for('lab_routes.garantias', page=pagination.prev_num, q=request.args.get('q', ''), estado=request.args.get('estado', 'all')) }}">Anterior</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link bg-transparent border-0 text-white-50">Página {{ pagination.page }} de {{ pagination.pages }}</span></li>
+                    {% if pagination.has_next %}
+                    <li class="page-item"><a class="page-link bg-dark border-secondary text-white" href="{{ url_for('lab_routes.garantias', page=pagination.next_num, q=request.args.get('q', ''), estado=request.args.get('estado', 'all')) }}">Siguiente</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Importar -->
+<div class="modal fade" id="modalImportar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white">Importar Garantías</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('lab_routes.importar_garantias') }}" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <p class="text-white-50 small mb-3">Sube un archivo Excel (.xlsx) con columnas <strong>SN</strong> y <strong>Garantía</strong>.</p>
+                    <input type="file" name="file" class="form-control bg-dark text-white border-secondary" required accept=".xlsx">
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Importar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

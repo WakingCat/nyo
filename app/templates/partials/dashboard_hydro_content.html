@@ -1,0 +1,158 @@
+<div class="container-fluid mt-4 fade-in">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-water"></i> Dashboard Hydro - Mining Operations</h2>
+            <p class="text-muted">Gestión de 110 contenedores S21Hyd</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-box"></i> Total Contenedores</h6>
+                    <h3 class="mb-0">{{ total_containers }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-check-circle"></i> Posiciones Operativas</h6>
+                    <h3 class="mb-0">{{ operational }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-square"></i> Posiciones Vacías</h6>
+                    <h3 class="mb-0">{{ empty }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="fas fa-microchip"></i> Total Posiciones</h6>
+                    <h3 class="mb-0">{{ total_positions }}</h3>
+                    <small>7 filas × 15 columnas × 220 racks</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mis Contenedores Asignados -->
+    {% if session.get('mis_containers') %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-header bg-dark border-info text-info">
+                    <h5 class="mb-0"><i class="fas fa-user-tag me-2"></i> Mis Contenedores Asignados</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for container in session.get('mis_containers') %}
+                        <div class="col-lg-1 col-md-2 col-sm-3 col-4 mb-3">
+                            <a href="{{ url_for('main.dashboard_container', container=container) }}" 
+                               class="btn btn-info w-100 container-btn text-dark font-weight-bold"
+                               style="min-height: 60px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 2px solid #0dcaf0;"
+                               hx-get="{{ url_for('main.dashboard_container', container=container) }}"
+                               hx-target="#main-area"
+                               hx-push-url="true">
+                                <strong>C{{ container }}</strong>
+                                <small>A | B</small>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Container Grid -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-th"></i> Todos los Contenedores (1-110)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for container in range(1, 111) %}
+                        <div class="col-lg-1 col-md-2 col-sm-3 col-4 mb-3">
+                            <a href="{{ url_for('main.dashboard_container', container=container) }}" 
+                               class="btn btn-outline-primary w-100 container-btn"
+                               style="min-height: 60px; display: flex; flex-direction: column; justify-content: center; align-items: center;"
+                               hx-get="{{ url_for('main.dashboard_container', container=container) }}"
+                               hx-target="#main-area"
+                               hx-push-url="true">
+                                <strong>C{{ container }}</strong>
+                                <small class="text-muted">A | B</small>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Requests -->
+    {% if mis_solicitudes %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list"></i> Mis Solicitudes Recientes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Minero</th>
+                                    <th>Origen</th>
+                                    <th>Destino</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sol in mis_solicitudes %}
+                                <tr>
+                                    <td>{{ sol.fecha_solicitud.strftime('%d/%m %H:%M') }}</td>
+                                    <td>{{ sol.miner.sn_fisica if sol.miner else 'N/A' }}</td>
+                                    <td>{{ sol.origen_str }}</td>
+                                    <td>{{ sol.destino }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if sol.estado == 'aprobado' %}bg-success
+                                            {% elif sol.estado == 'rechazado' or sol.estado == 'rechazado_lab' %}bg-danger
+                                            {% elif sol.estado == 'ejecutado' %}bg-info
+                                            {% elif sol.estado == 'pendiente_lab' %}bg-secondary
+                                            {% elif sol.estado == 'pendiente_coordinador_hydro' %}bg-primary
+                                            {% else %}bg-warning text-dark{% endif %}">
+                                            {% if sol.estado == 'pendiente_lab' %}Pend. Lab
+                                            {% elif sol.estado == 'pendiente_coordinador' %}Pend. Coord.
+                                            {% elif sol.estado == 'pendiente_coordinador_hydro' %}Pend. Coord. Hydro
+                                            {% elif sol.estado == 'rechazado_lab' %}Rechazado Lab
+                                            {% else %}{{ sol.estado|capitalize }}{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+

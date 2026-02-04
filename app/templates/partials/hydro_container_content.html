@@ -1,0 +1,220 @@
+<div class="container-fluid mt-4 fade-in">
+    {% set wh_actual = warehouse_id %}
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.dashboard_hydro') }}" 
+                   hx-get="{{ url_for('main.dashboard_hydro') }}"
+                   hx-target="#main-area"
+                   hx-push-url="true">
+                   Dashboard Hydro
+                </a>
+            </li>
+            <li class="breadcrumb-item active">Container {{ container }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <h2><i class="fas fa-box"></i> Container {{ container }}</h2>
+            <p class="text-muted">Warehouse ID: {{ warehouse_id }} | 7 filas × 15 columnas por rack</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('main.dashboard_hydro') }}" 
+               class="btn btn-secondary"
+               hx-get="{{ url_for('main.dashboard_hydro') }}"
+               hx-target="#main-area"
+               hx-push-url="true">
+                <i class="fas fa-arrow-left"></i> Volver a Contenedores
+            </a>
+        </div>
+    </div>
+
+    <!-- Rack Selector -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="btn-group w-100" role="group">
+                <a href="{{ url_for('main.dashboard_container', container=container, rack=rack_a_id) }}" 
+                   class="btn btn-lg {% if rack_actual == rack_a_id %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                   hx-get="{{ url_for('main.dashboard_container', container=container, rack=rack_a_id) }}"
+                   hx-target="#main-area"
+                   hx-push-url="true">
+                    <i class="fas fa-server"></i> Rack A (ID: {{ rack_a_id }})
+                </a>
+                <a href="{{ url_for('main.dashboard_container', container=container, rack=rack_b_id) }}" 
+                   class="btn btn-lg {% if rack_actual == rack_b_id %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                   hx-get="{{ url_for('main.dashboard_container', container=container, rack=rack_b_id) }}"
+                   hx-target="#main-area"
+                   hx-push-url="true">
+                    <i class="fas fa-server"></i> Rack B (ID: {{ rack_b_id }})
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Rack Info -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <strong>Mostrando:</strong> 
+                {% if rack_actual == rack_a_id %}Rack A{% else %}Rack B{% endif %} 
+                (rack_id={{ rack_actual }})
+            </div>
+        </div>
+    </div>
+
+    <!-- Miner Grid -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-th"></i> 
+                        Grid de Mineros - Container {{ container }} - 
+                        {% if rack_actual == rack_a_id %}Rack A{% else %}Rack B{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body p-2">
+                    <!-- Grid específico de Hydro (7 filas × 15 columnas) -->
+                    {% include 'partials/hydro_miner_grid.html' %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Miners (if any) -->
+    {% if pendientes %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Mineros Pendientes de Colocación en Hydro
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>SN Física</th>
+                                    <th>Modelo</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in pendientes %}
+                                <tr>
+                                    <td>{{ m.sn_fisica }}</td>
+                                    <td>{{ m.modelo }}</td>
+                                    <td><span class="badge bg-warning text-dark">{{ m.proceso_estado }}</span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" 
+                                                onclick="prepararColocacion('{{ m.id }}', '{{ m.sn_fisica }}', '{{ m.rack_id }}')">
+                                            <i class="fas fa-map-marker-alt"></i> Colocar
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Modal Colocación -->
+    <div class="modal fade" id="modalColocar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark border-primary text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-primary"><i class="fas fa-map-marker-alt"></i> Colocar Minero</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Minero: <strong id="colocar-sn" class="text-warning"></strong></p>
+                    <form id="formColocar">
+                        <input type="hidden" id="colocar-id" name="id">
+                        <input type="hidden" id="colocar-wh" name="wh" value="{{ warehouse_id }}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-white-50">Rack</label>
+                            <select class="form-select bg-black text-white border-secondary" id="colocar-rack" name="rack">
+                                <option value="{{ rack_a_id }}">Rack A ({{ rack_a_id }})</option>
+                                <option value="{{ rack_b_id }}">Rack B ({{ rack_b_id }})</option>
+                            </select>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label text-white-50">Fila (1-7)</label>
+                                <input type="number" class="form-control bg-black text-white border-secondary" 
+                                       id="colocar-fila" name="fila" min="1" max="7" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label text-white-50">Columna (1-15)</label>
+                                <input type="number" class="form-control bg-black text-white border-secondary" 
+                                       id="colocar-columna" name="columna" min="1" max="15" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary"
+                            hx-post="/api/hydro/colocar"
+                            hx-vals="js:{
+                                id: document.getElementById('colocar-id').value,
+                                wh: document.getElementById('colocar-wh').value,
+                                rack: document.getElementById('colocar-rack').value,
+                                fila: document.getElementById('colocar-fila').value,
+                                columna: document.getElementById('colocar-columna').value
+                            }"
+                            hx-target="#main-area"
+                            data-bs-dismiss="modal">
+                        Confirmar Ubicación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function prepararColocacion(id, sn, rackId) {
+    document.getElementById('colocar-id').value = id;
+    document.getElementById('colocar-sn').innerText = sn;
+    if(rackId && rackId !== 'None') {
+        document.getElementById('colocar-rack').value = rackId;
+    }
+    new bootstrap.Modal(document.getElementById('modalColocar')).show();
+}
+</script>
+
+<style>
+.btn-group .btn {
+    border-radius: 0;
+}
+.btn-group .btn:first-child {
+    border-top-left-radius: 0.25rem;
+    border-bottom-left-radius: 0.25rem;
+}
+.btn-group .btn:last-child {
+    border-top-right-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+}
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+</style>
+
