@@ -1,20 +1,31 @@
 import gspread
 import os
+import json
 from datetime import datetime
 
 class GoogleSheetsService:
     def __init__(self):
-        # Buscamos credentials.json en la raíz del proyecto (2 niveles arriba de services)
-        base_dir = os.path.abspath(os.path.dirname(__file__))
-        credentials_path = os.path.join(base_dir, '../../credentials.json')
-        
         try:
-            self.gc = gspread.service_account(filename=credentials_path)
+            # OPCIÓN 1: Variable de entorno (para Railway/producción)
+            credentials_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
+            
+            if credentials_json:
+                # Parsear JSON de la variable de entorno
+                credentials_dict = json.loads(credentials_json)
+                self.gc = gspread.service_account_from_dict(credentials_dict)
+                print("✅ Google Sheets conectado via variable de entorno.")
+            else:
+                # OPCIÓN 2: Archivo credentials.json (desarrollo local)
+                base_dir = os.path.abspath(os.path.dirname(__file__))
+                credentials_path = os.path.join(base_dir, '../../credentials.json')
+                self.gc = gspread.service_account(filename=credentials_path)
+                print("✅ Google Sheets conectado via credentials.json.")
+            
             # Spreadsheet legacy para movimientos y cambio de piezas
             self.spreadsheet_id = '1bk6c3zYVWyDFTGmSmDicYc8EzTECrhgd1nDHfawWkC0'
             # Nueva spreadsheet para RMA WH
             self.rma_spreadsheet_id = '18_S4xJKKtLDlJ23dE8D2QgpHrrjqEmBT31LepkjpM20'
-            print("✅ Conexión con Google Sheets establecida.")
+            
         except Exception as e:
             print(f"❌ Error conectando a Google: {e}")
             self.gc = None
