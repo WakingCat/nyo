@@ -80,6 +80,12 @@ def confirmar_recepcion(id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error: {str(e)}', 'danger')
+    
+    # Si es petición HTMX, redirigir con HX-Redirect
+    if request.headers.get('HX-Request'):
+        response = redirect(url_for('conciliacion_dash.dashboard'))
+        response.headers['HX-Redirect'] = url_for('conciliacion_dash.dashboard')
+        return response
         
     return redirect(url_for('conciliacion_dash.dashboard'))
 
@@ -159,6 +165,12 @@ def finalizar_exito(id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error: {str(e)}', 'danger')
+    
+    # Si es petición HTMX, redirigir con HX-Redirect
+    if request.headers.get('HX-Request'):
+        response = redirect(url_for('conciliacion_dash.dashboard'))
+        response.headers['HX-Redirect'] = url_for('conciliacion_dash.dashboard')
+        return response
         
     return redirect(url_for('conciliacion_dash.dashboard'))
 
@@ -219,5 +231,11 @@ def ceder_lab(id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error: {str(e)}', 'danger')
+    
+    # Si es petición HTMX, redirigir con HX-Redirect
+    if request.headers.get('HX-Request'):
+        response = redirect(url_for('conciliacion_dash.dashboard'))
+        response.headers['HX-Redirect'] = url_for('conciliacion_dash.dashboard')
+        return response
         
     return redirect(url_for('conciliacion_dash.dashboard'))

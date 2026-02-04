@@ -53,14 +53,18 @@
                                 <h5 class="modal-title text-success">Prueba Exitosa</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
-                            <form action="{{ url_for('conciliacion_dash.finalizar_exito', id=sol.id) }}" method="POST">
+                            <form hx-post="{{ url_for('conciliacion_dash.finalizar_exito', id=sol.id) }}"
+                                  hx-swap="none">
                                 <div class="modal-body">
                                     <p>Confirmas que la pieza <strong>{{ sol.tipo_pieza }}</strong> solucionó el problema?</p>
                                     <textarea name="comentario" class="form-control bg-black text-white" placeholder="Comentario opcional..."></textarea>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-success">Confirmar Reparación</button>
+                                    <button type="submit" class="btn btn-success">
+                                        <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+                                        Confirmar Reparación
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -75,7 +79,8 @@
                                 <h5 class="modal-title text-danger">Ceder a Laboratorio</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
-                            <form action="{{ url_for('conciliacion_dash.ceder_lab', id=sol.id) }}" method="POST">
+                            <form hx-post="{{ url_for('conciliacion_dash.ceder_lab', id=sol.id) }}"
+                                  hx-swap="none">
                                 <div class="modal-body">
                                     <p>El equipo NO funcionó con la pieza nueva.</p>
                                     <p>Se generará un <strong>ingreso a Laboratorio</strong> para reparación profunda.</p>
@@ -83,7 +88,10 @@
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-danger">Confirmar y Ceder</button>
+                                    <button type="submit" class="btn btn-danger">
+                                        <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+                                        Confirmar y Ceder
+                                    </button>
                                 </div>
                             </form>
                         </div>
