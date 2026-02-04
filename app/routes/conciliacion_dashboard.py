@@ -88,6 +88,7 @@ def confirmar_recepcion(id):
 def finalizar_exito(id):
     """
     Prueba EXITOSA. El minero queda operativo con la pieza nueva.
+    Si es conciliación LAB, el minero vuelve al WH de origen.
     """
     try:
         solicitud = SolicitudPieza.query.get(id)
@@ -101,22 +102,59 @@ def finalizar_exito(id):
         solicitud.estado = 'finalizado'
         
         # RESTAURAR ESTADO DEL MINERO
-        # Al tener éxito, el minero está reparado y vuelve a estar operativo.
         miner = solicitud.miner
         if miner:
             miner.proceso_estado = 'operativo'
-            miner.diagnostico_detalle = None  # Limpiar flag de RMA para el frontend
+            miner.diagnostico_detalle = None
             miner.diagnostico_fecha = None
+            
+            # Si es conciliación LAB, el minero debe volver al WH de origen
+            if solicitud.tipo_conciliacion == 'LAB':
+                # Obtener datos del traslado original para saber a dónde volver
+                traslado = SolicitudTraslado.query.get(solicitud.solicitud_traslado_id) if solicitud.solicitud_traslado_id else None
+                
+                if traslado and traslado.origen_wh:
+                    # Restaurar al WH de origen como pendiente de colocación
+                    miner.warehouse_id = traslado.origen_wh
+                    miner.rack_id = None  # Se colocará manualmente
+                    miner.fila = None
+                    miner.columna = None
+                    miner.proceso_estado = 'pendiente_colocacion'
+                    
+                    db.session.add(Movimiento(
+                        usuario_id=session['user_id'],
+                        accion="RETORNO A WH (CONCILIACIÓN EXITOSA)",
+                        referencia_miner=f"{miner.sn_fisica}",
+                        datos_nuevos=f"Retorna a WH{traslado.origen_wh} como pendiente de colocación."
+                    ))
+                elif solicitud.wh_origen:
+                    # Fallback: usar wh_origen de la solicitud de pieza
+                    miner.warehouse_id = solicitud.wh_origen
+                    miner.rack_id = None
+                    miner.fila = None
+                    miner.columna = None
+                    miner.proceso_estado = 'pendiente_colocacion'
+                    
+                    db.session.add(Movimiento(
+                        usuario_id=session['user_id'],
+                        accion="RETORNO A WH (CONCILIACIÓN EXITOSA)",
+                        referencia_miner=f"{miner.sn_fisica}",
+                        datos_nuevos=f"Retorna a WH{solicitud.wh_origen} como pendiente de colocación."
+                    ))
             
         db.session.add(Movimiento(
             usuario_id=session['user_id'],
             accion="CONCILIACIÓN EXITOSA",
             referencia_miner=f"{solicitud.miner.sn_fisica}",
-            datos_nuevos=f"Pieza {solicitud.tipo_pieza} funcionó. Miner liberado a operativo. {comentario}"
+            datos_nuevos=f"Pieza {solicitud.tipo_pieza} funcionó. {comentario}"
         ))
         
         db.session.commit()
-        flash('Conciliación finalizada con éxito. El equipo ha vuelto a estado OPERATIVO.', 'success')
+        
+        if solicitud.tipo_conciliacion == 'LAB':
+            flash('Conciliación finalizada con éxito. El equipo está pendiente de colocación en el WH.', 'success')
+        else:
+            flash('Conciliación finalizada con éxito. El equipo ha vuelto a estado OPERATIVO.', 'success')
         
     except Exception as e:
         db.session.rollback()
