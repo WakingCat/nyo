@@ -13,9 +13,15 @@ class Config:
     # ============================================
     
     # Construir URI desde variables individuales o usar URI completa
+    # Construir URI desde variables individuales o usar URI completa
     if os.environ.get('DATABASE_URL'):
-        SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+        uri = os.environ.get('DATABASE_URL')
+        # Fix para SQLAlchemy que requiere postgresql:// en vez de postgres://
+        if uri.startswith("postgres://"):
+            uri = uri.replace("postgres://", "postgresql://", 1)
+        SQLALCHEMY_DATABASE_URI = uri
     else:
+        # Fallback a MySQL local para desarrollo si no hay variable
         db_user = os.environ.get('DATABASE_USER', 'root')
         db_pass = os.environ.get('DATABASE_PASSWORD', 'root')
         db_host = os.environ.get('DATABASE_HOST', 'localhost')
