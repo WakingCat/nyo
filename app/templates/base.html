@@ -14,6 +14,7 @@
 
     <div class="container-fluid">
         <div class="row">
+        {% if session.get('user_id') %}
             <nav class="col-md-2 sidebar d-flex flex-column p-3 border-end border-secondary vh-100 sticky-top overflow-y-auto" style="background-color: #0b0c10;">
                 
                 <div class="text-center mb-3">
@@ -44,7 +45,7 @@
 
                     {# Link Panel Laboratorio - Visible para Coordinadores y Lab #}
                     {% set user_role = session.get('role', '') %}
-                    {% if 'Site Manager' in user_role or 'Coordinador' in user_role or 'Técnico de Laboratorio' in user_role %}
+                    {% if 'Site Manager' in user_role or 'Coordinador' in user_role or 'Técnico de Laboratorio' in user_role or 'Supervisor de Laboratorio' in user_role %}
                     <li class="nav-item mb-2">
                         <a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('lab_approvals.panel') }}">
                             <i class="bi bi-shield-check text-info"></i> Pre-Aprobación Lab
@@ -116,8 +117,9 @@
                     <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger w-100 btn-sm fw-bold"><i class="bi bi-box-arrow-right"></i> SALIR</a>
                 </div>
             </nav>
+        {% endif %}
 
-            <main class="col-md-10 p-4" style="background-color: #06070a;" id="main-area">
+            <main class="{{ 'col-md-10' if session.get('user_id') else 'col-12' }} p-4" style="background-color: #06070a;" id="main-area">
                 {% block content %}{% endblock %}
             </main>
         </div>
