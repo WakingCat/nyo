@@ -45,7 +45,7 @@
 
                     {# Link Panel Laboratorio - Visible para Coordinadores y Lab #}
                     {% set user_role = session.get('role', '') %}
-                    {% if 'Site Manager' in user_role or 'Coordinador' in user_role or 'Técnico de Laboratorio' in user_role or 'Supervisor de Laboratorio' in user_role %}
+                    {% if 'Site Manager' in user_role or 'Coordinador' in user_role or 'Tecnico Lab' in user_role or 'Técnico de Laboratorio' in user_role or 'Supervisor' in user_role %}
                     <li class="nav-item mb-2">
                         <a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('lab_approvals.panel') }}">
                             <i class="bi bi-shield-check text-info"></i> Pre-Aprobación Lab
