@@ -94,6 +94,11 @@
                             <i class="bi bi-grid-3x3 me-2"></i> Ver Warehouses
                         </a>
                         {% endif %}
+                        {% if 'Site Manager' in session.get('role', '') %}
+                        <a href="{{ url_for('main.dashboard_hydro') }}" class="btn btn-outline-info text-start">
+                            <i class="bi bi-droplet-fill me-2"></i> Ver Contenedores Hydro
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
