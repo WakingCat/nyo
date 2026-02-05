@@ -17,17 +17,26 @@ def create_app():
     db.init_app(app)
     
     # ✅ Configurar Redis para sesiones (compartidas entre workers)
-    try:
-        redis_client = redis.from_url(app.config['REDIS_URL'])
-        redis_client.ping()
-        app.config['SESSION_REDIS'] = redis_client
-        sess.init_app(app)
-        print("✅ Redis conectado - Sesiones compartidas entre workers")
-    except Exception as e:
-        print(f"⚠️  Redis no disponible: {e}")
-        print("   Usando sesiones en memoria (no recomendado para producción)")
+    # ✅ Configurar Redis para sesiones (compartidas entre workers)
+    redis_url = app.config.get('REDIS_URL')
+    redis_connected = False
+    
+    if redis_url:
+        try:
+            redis_client = redis.from_url(redis_url, socket_timeout=2)
+            redis_client.ping()
+            app.config['SESSION_REDIS'] = redis_client
+            redis_connected = True
+            print("✅ Redis conectado - Sesiones compartidas entre workers")
+        except Exception as e:
+            print(f"⚠️  Redis no disponible: {e}")
+    
+    if not redis_connected:
+        print("   Usando sesiones en memoria/archivo (no recomendado para producción)")
         app.config['SESSION_TYPE'] = 'filesystem'
-        sess.init_app(app)
+        app.config['SESSION_REDIS'] = None # Asegurar que no intenta usarlo
+    
+    sess.init_app(app)
     
     # ✅ Configurar caché
     cache.init_app(app)

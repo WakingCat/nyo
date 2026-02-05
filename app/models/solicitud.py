@@ -20,7 +20,7 @@ class SolicitudTraslado(db.Model):
     destino = db.Column(db.String(50), nullable=False)  # 'LAB', 'WH2', etc.
     
     # Sector del minero
-    sector = db.Column(db.Enum('WH', 'Hydro'), nullable=False)
+    sector = db.Column(db.Enum('WH', 'Hydro', name='sector_enum'), nullable=False)
     
     # Estado del workflow
     # pendiente_lab: Esperando aprobación del laboratorio
@@ -28,8 +28,8 @@ class SolicitudTraslado(db.Model):
     # pendiente_coordinador: Esperando aprobación del Coordinador final
     # pendiente: Estado legacy, equivalente a pendiente_coordinador
     estado = db.Column(
-        db.Enum('pendiente_lab', 'pendiente_coordinador', 'pendiente_coordinador_hydro', 'pendiente', 'aprobado', 'rechazado', 'rechazado_lab', 'ejecutado'),
-        default='pendiente_lab'
+        db.Enum('pendiente_lab', 'pendiente_coordinador', 'pendiente_coordinador_hydro', 'pendiente', 'aprobado', 'rechazado', 'rechazado_lab', 'ejecutado', name='estado_solicitud_enum'),
+        default='pendiente'
     )
     
     # Datos de la solicitud
