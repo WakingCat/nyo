@@ -63,3 +63,5 @@ pytest-cov==6.0.0
 faker==33.1.0
 # Force rebuild mié 04 feb 2026 13:40:09 -03
 psycopg2-binary==2.9.9
+pandas==2.2.3
+numpy==2.2.3
