@@ -27,6 +27,11 @@ def department_required(allowed_departments: list):
                 flash("Debes iniciar sesión para acceder.", "warning")
                 return redirect(url_for('auth.login'))
             
+            # Site Manager tiene acceso a todos los departamentos
+            user_role = session.get('role', '')
+            if 'Site Manager' in user_role:
+                return f(*args, **kwargs)
+            
             # Obtener departamento del usuario desde la sesión
             user_dept = session.get('depto', '')
             
