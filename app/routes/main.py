@@ -184,6 +184,51 @@ def monitor():
     historial = query.limit(100).all()
     return render_template('admin/monitor.html', historial=historial)
 
+
+@main_bp.route('/mi-historial')
+@login_required
+def mi_historial():
+    """Historial personal y de mi grupo (mismos WH/Contenedores)"""
+    user = User.query.get(session['user_id'])
+    my_whs = user.get_assigned_warehouses()
+    
+    if not my_whs:
+        # Si no tiene WH, solo mostrar sus propios movimientos
+        share_users = [user.id]
+    else:
+        # Buscar usuarios que compartan al menos un WH o Contenedor
+        all_users = User.query.all()
+        share_users = []
+        
+        for u in all_users:
+            u_whs = u.get_assigned_warehouses()
+            # Intersección de listas: si comparten algún WH
+            if set(my_whs) & set(u_whs):
+                share_users.append(u.id)
+                
+        # Asegurar incluirse a sí mismo
+        if user.id not in share_users:
+            share_users.append(user.id)
+    
+    # Query movimientos de estos usuarios
+    sn_filter = request.args.get('sn', '').strip()
+    query = Movimiento.query.filter(Movimiento.usuario_id.in_(share_users)).order_by(Movimiento.fecha_hora.desc())
+    
+    if sn_filter:
+         query = query.filter(
+            db.or_(
+                Movimiento.referencia_miner.ilike(f'%{sn_filter}%'),
+                Movimiento.datos_nuevos.ilike(f'%{sn_filter}%')
+            )
+        )
+        
+    historial = query.limit(100).all()
+    
+    return render_template('mi_historial.html', 
+                          historial=historial, 
+                          title="MI HISTORIAL DE GRUPO",
+                          subtitle=f"Movimientos en mis zonas ({', '.join(map(str, my_whs))})")
+
 @main_bp.route('/dashboard/<int:wh>/<int:rack>')
 @login_required
 @warehouse_permission_required()  # Verificar acceso al warehouse

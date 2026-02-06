@@ -433,7 +433,8 @@ async function guardarDiagnostico() {
         sn_fisica: currentMinerData.sn_fisica, // Tomar del original para referencia
         falla: falla,
         solucion: solucion,
-        observacion: document.getElementById('diag-observacion').value
+        observacion: document.getElementById('diag-observacion').value,
+        marcar_solucionado: (solucion === 'Solucionado')  // Flag para limpiar diagnóstico
     };
 
     try {
@@ -446,8 +447,23 @@ async function guardarDiagnostico() {
         const json = await res.json();
 
         if (res.ok) {
-            alert("✅ Diagnóstico guardado correctamente.");
-            location.reload();
+            // Cerrar modal diagnóstico
+            bootstrap.Modal.getInstance(document.getElementById('modalDiagnostico'))?.hide();
+
+            // Si eligió RMA, abrir modal RMA con datos prellenados
+            if (solucion === 'RMA') {
+                alert("✅ Diagnóstico guardado. Ahora complete el formulario RMA.");
+                // Precargar datos en currentMinerData para el modal RMA
+                currentMinerData.diagnostico_detalle = `Falla: ${falla}`;
+                currentMinerData.falla_detectada = falla;
+                abrirModalMinerDirecto(currentMinerData, payload.wh, payload.rack, payload.fila, payload.columna);
+            } else if (solucion === 'Solucionado') {
+                alert("✅ Problema marcado como SOLUCIONADO. El equipo vuelve a estado operativo.");
+                location.reload();
+            } else {
+                alert("✅ Diagnóstico guardado correctamente.");
+                location.reload();
+            }
         } else {
             alert("Error: " + json.message);
         }

@@ -23,12 +23,19 @@ onclick="abrirModal({{ wh_actual }}, {{ rack_actual }}, {{ f }}, {{ c }})"
                 <span class="d-block text-white" style="font-size: 0.55rem;">{{ m.sn_fisica[:8] }}...</span>
                 <span class="badge bg-warning text-dark mt-1" style="font-size: 0.5rem;">CONCILIANDO</span>
             </div>
-        {% elif status == 'en_laboratorio' or tiene_rma %}
+        {% elif status == 'en_laboratorio' %}
             <div class="text-center w-100">
                 <i class="bi bi-wrench-adjustable mb-1 text-danger" style="font-size: 1rem;"></i>
                 <span class="d-block model-tag text-danger" style="font-size: 0.65rem;">{{ m.modelo }}</span>
                 <span class="d-block text-white" style="font-size: 0.55rem;">{{ m.sn_fisica[:8] }}...</span>
                 <span class="badge bg-danger mt-1" style="font-size: 0.5rem;">CON RMA</span>
+            </div>
+        {% elif tiene_rma %}
+            <div class="text-center w-100">
+                <i class="bi bi-clipboard-pulse mb-1 text-info" style="font-size: 1rem;"></i>
+                <span class="d-block model-tag text-info" style="font-size: 0.65rem;">{{ m.modelo }}</span>
+                <span class="d-block text-white" style="font-size: 0.55rem;">{{ m.sn_fisica[:8] }}...</span>
+                <span class="badge bg-info text-dark mt-1" style="font-size: 0.5rem;">DIAGNOSTICADO</span>
             </div>
         {% else %}
             <i class="bi bi-cpu mb-1 text-secondary" style="font-size: 1rem;"></i>

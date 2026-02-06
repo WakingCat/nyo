@@ -88,6 +88,11 @@
                             <i class="bi bi-tools text-warning"></i> Mis Conciliaciones
                         </a>
                     </li>
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('main.mi_historial') }}">
+                            <i class="bi bi-clock-history text-info"></i> Mi Historial de Grupo
+                        </a>
+                    </li>
                     
                     <hr class="text-secondary my-3 opacity-25">
 
@@ -145,23 +150,22 @@
                 </div>
                 <div class="modal-body p-4 text-center">
                     <h4 class="text-white mb-2" id="decision-title">Ubicación...</h4>
-                    <p class="text-secondary mb-4">Seleccione una acción para este equipo</p>
+                    <p class="text-secondary mb-4">¿Qué acción desea realizar?</p>
                     
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <button class="btn btn-outline-info w-100 py-3 hover-light" onclick="abrirFormularioDiagnostico()">
-                                <i class="bi bi-clipboard-check fs-1 mb-2 d-block"></i>
-                                <span class="fw-bold">DIAGNOSTICAR</span>
-                                <div class="small text-secondary mt-1">Registrar intento de reparación in-situ</div>
-                            </button>
-                        </div>
-                        <div class="col-6">
-                            <button class="btn btn-outline-warning w-100 py-3 hover-light" onclick="abrirRMA()">
-                                <i class="bi bi-tools fs-1 mb-2 d-block"></i>
-                                <span class="fw-bold">RMA / PIEZAS</span>
-                                <div class="small text-secondary mt-1">Enviar a Lab o pedir repuesto</div>
-                            </button>
-                        </div>
+                    <div class="d-grid gap-3">
+                        <button class="btn btn-info btn-lg py-3 hover-light" onclick="abrirFormularioDiagnostico()">
+                            <i class="bi bi-clipboard-check fs-1 mb-2 d-block"></i>
+                            <span class="fw-bold">DIAGNOSTICAR</span>
+                            <div class="small text-white-50 mt-1">Registrar diagnóstico y decidir acción</div>
+                        </button>
+                    </div>
+                    
+                    <div class="text-start mt-4 p-3 bg-black rounded border border-secondary">
+                        <small class="text-secondary">
+                            <i class="bi bi-info-circle me-1"></i> 
+                            Debe registrar un diagnóstico antes de poder enviar a RMA o solicitar piezas.
+                            Si el problema se soluciona durante el diagnóstico, podrá marcarlo como resuelto.
+                        </small>
                     </div>
                 </div>
             </div>
@@ -229,6 +233,7 @@
                                 <label class="form-label small text-white-50">Solución Aplicada *</label>
                                 <select class="form-select bg-dark text-white border-secondary" id="diag-solucion" required onchange="checkSolucionDiag(this.value)">
                                     <option value="">Seleccionar...</option>
+                                    <option value="Solucionado" class="text-success">✓ SOLUCIONADO - Problema resuelto</option>
                                     <option value="Reinicio interfaz">Reinicio desde la interfaz</option>
                                     <option value="Restauración y FW">Restauración y Firmware</option>
                                     <option value="Reinicio manual">Reinicio físico (Manual)</option>
@@ -236,7 +241,7 @@
                                     <option value="Firmware Update">Actualización Firmware</option>
                                     <option value="Reinicio PDU">Reinicio PDU</option>
                                     <option value="Conciliación">Conciliación (Cambio Pieza)</option>
-                                    <option value="RMA">Derivar a RMA</option>
+                                    <option value="RMA" class="text-warning">→ RMA (Derivar a Laboratorio)</option>
                                     <option value="Restauración">Solo Restauración</option>
                                 </select>
                             </div>

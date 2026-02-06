@@ -49,13 +49,30 @@ def guardar_diagnostico():
         )
         db.session.add(nuevo_diag)
         
-        # 2. Actualizar Minero (IP y SN Digital)
+        # 2. Actualizar Minero
         minero = Miner.query.get(miner_id)
         if minero:
+            # Actualizar datos básicos
             if ip and minero.ip_address != ip:
                 minero.ip_address = ip
             if sn_digital and minero.sn_digital != sn_digital:
                 minero.sn_digital = sn_digital
+            
+            # Lógica de Estado Diagnosticado
+            marcar_solucionado = data.get('marcar_solucionado', False)
+            
+            if marcar_solucionado:
+                # Si se solucionó, limpiamos cualquier rastro de problema anterior
+                minero.diagnostico_detalle = None
+                # Aseguramos que quede como operativo si estaba en otro estado (excepto si estaba en proceso critico)
+                if minero.proceso_estado == 'operativo':
+                    pass # Ya está bien
+                elif minero.proceso_estado not in ['baja_definitiva', 'donante_piezas']:
+                    minero.proceso_estado = 'operativo'
+            else:
+                # Si no se solucionó (es solo diagnóstico o va para RMA), marcamos la etiqueta
+                # Esto hará que aparezca el badge "DIAGNOSTICADO"
+                minero.diagnostico_detalle = f"DIAGNOSTICADO: {falla}"
                 
         db.session.commit()
         
