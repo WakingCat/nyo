@@ -165,7 +165,16 @@ async function abrirModal(wh, rack, fila, columna) {
         }
         // 2. Si es un equipo "nuevo" o sin problemas -> ABRIR SELECCIÓN (Diagnóstico vs RMA)
         else {
-            document.getElementById('decision-title').innerText = `WH ${wh} - Rack ${rack} (${fila}-${columna})`;
+            // Mostrar ubicación en formato correcto (Hydro vs WH)
+            let ubicacionTxt;
+            if (wh == HYDRO_WH_ID) {
+                const container = Math.ceil(rack / 2);
+                const rackLetra = rack % 2 === 1 ? 'A' : 'B';
+                ubicacionTxt = `C${container}-${rackLetra} (${fila}-${columna})`;
+            } else {
+                ubicacionTxt = `WH ${wh} - Rack ${rack} (${fila}-${columna})`;
+            }
+            document.getElementById('decision-title').innerText = ubicacionTxt;
             const modalDecision = new bootstrap.Modal(document.getElementById('modalDecision'));
             modalDecision.show();
         }
