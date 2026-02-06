@@ -49,6 +49,9 @@ class TransferService:
             estado='pendiente_lab'  # Nuevo estado inicial por defecto
         )
         
+        # Bloquear miner de acciones RMA mientras tiene solicitud pendiente
+        minero.proceso_estado = 'pendiente_traslado'
+        
         db.session.add(solicitud)
         db.session.commit()
         
@@ -311,6 +314,10 @@ class TransferService:
         solicitud.fecha_resolucion = datetime.now()
         solicitud.comentario_resolucion = f"Rechazado por LAB: {motivo}"
         solicitud.aprobador_id = user_id
+        
+        # Restaurar miner a estado RMA para permitir reintento
+        if solicitud.miner:
+            solicitud.miner.proceso_estado = 'operativo'  # Vuelve a operativo con RMA (diagnostico_detalle aún existe)
         
         db.session.add(Movimiento(
             usuario_id=user_id,

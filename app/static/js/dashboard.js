@@ -219,8 +219,27 @@ function abrirModalMinerDirecto(data, wh, rack, fila, columna) {
 
         // --- LÓGICA DE ESTADOS Y BOTONES ---
         const tieneRMA = (data.proceso_estado === 'en_laboratorio' || data.proceso_estado === 'en_reparacion' || data.diagnostico_detalle);
+        const estadoBloqueado = (data.proceso_estado === 'pendiente_traslado' || data.proceso_estado === 'Conciliando');
 
-        if (tieneRMA) {
+        // NUEVO: Si está en estado bloqueado, mostrar solo info sin opciones
+        if (estadoBloqueado) {
+            headerModal.classList.remove('bg-black');
+            headerModal.classList.add('bg-danger');
+
+            if (data.proceso_estado === 'pendiente_traslado') {
+                titulo.innerText += " (EN TRASLADO)";
+            } else {
+                titulo.innerText += " (EN CONCILIACIÓN)";
+            }
+
+            btnsNormal.style.display = 'none';
+            btnsRMA.style.display = 'none'; // Sin botones RMA
+            form.style.display = 'none';
+
+            // Mostrar info del estado
+            renderLockedInfo(data, form);
+        }
+        else if (tieneRMA) {
             headerModal.classList.remove('bg-black');
             headerModal.classList.add('bg-danger');
             titulo.innerText += " (CON RMA)";
@@ -287,6 +306,56 @@ function renderRMAInfo(data, form) {
     if (data.diagnostico_detalle) {
         const alertRMA = document.createElement('div');
         alertRMA.className = 'alert alert-danger mb-3';
+        alertRMA.innerHTML = `<strong><i class="bi bi-exclamation-triangle me-2"></i>RMA Registrado:</strong><br>${data.diagnostico_detalle}`;
+        rmaInfoContainer.appendChild(alertRMA);
+    }
+}
+
+// Función para mostrar info cuando el equipo está bloqueado (en traslado o conciliación)
+function renderLockedInfo(data, form) {
+    let rmaInfoContainer = document.getElementById('rma-info-container');
+    if (!rmaInfoContainer) {
+        rmaInfoContainer = document.createElement('div');
+        rmaInfoContainer.id = 'rma-info-container';
+        form.parentElement.insertBefore(rmaInfoContainer, form);
+    }
+    rmaInfoContainer.innerHTML = '';
+
+    const infoMinero = document.createElement('div');
+    infoMinero.className = 'mb-3 p-3 bg-dark rounded border border-secondary';
+    infoMinero.innerHTML = `
+        <h6 class="text-white mb-2"><i class="bi bi-cpu me-2"></i>Información del Equipo</h6>
+        <div class="row text-white small">
+            <div class="col-6"><strong>SN:</strong> ${data.sn_fisica || 'N/A'}</div>
+            <div class="col-6"><strong>Modelo:</strong> ${data.modelo || 'N/A'}</div>
+            <div class="col-6"><strong>TH/s:</strong> ${data.ths || 'N/A'}</div>
+            <div class="col-6"><strong>IP:</strong> ${data.ip_address || 'N/A'}</div>
+        </div>
+    `;
+    rmaInfoContainer.appendChild(infoMinero);
+
+    // Mensaje de estado bloqueado
+    const alertEstado = document.createElement('div');
+    if (data.proceso_estado === 'pendiente_traslado') {
+        alertEstado.className = 'alert alert-warning mb-3';
+        alertEstado.innerHTML = `
+            <strong><i class="bi bi-hourglass-split me-2"></i>Traslado Pendiente</strong><br>
+            Este equipo tiene una solicitud de traslado en proceso.<br>
+            <small class="text-white">Espera la aprobación del coordinador para continuar.</small>
+        `;
+    } else {
+        alertEstado.className = 'alert alert-info mb-3';
+        alertEstado.innerHTML = `
+            <strong><i class="bi bi-tools me-2"></i>En Conciliación</strong><br>
+            Este equipo está en proceso de conciliación de piezas.<br>
+            <small class="text-white">Espera a que finalice el proceso para tomar otras acciones.</small>
+        `;
+    }
+    rmaInfoContainer.appendChild(alertEstado);
+
+    if (data.diagnostico_detalle) {
+        const alertRMA = document.createElement('div');
+        alertRMA.className = 'alert alert-danger mb-0';
         alertRMA.innerHTML = `<strong><i class="bi bi-exclamation-triangle me-2"></i>RMA Registrado:</strong><br>${data.diagnostico_detalle}`;
         rmaInfoContainer.appendChild(alertRMA);
     }
