@@ -131,14 +131,8 @@ document.addEventListener("DOMContentLoaded", () => {
             tarjeta.addEventListener('click', () => { tarjeta.classList.remove('shining-gold'); }, { once: true });
         }
 
-        // B. Abrir modal automáticamente
-        const path = window.location.pathname.split('/');
-        const wh = path[2];
-        const rack = path[3];
-
-        if (wh && rack) {
-            abrirModal(wh, rack, f, c);
-        }
+        // B. NO abrir modal automáticamente, solo scroll y highlight
+        // (El usuario pidió que solo parpadee, sin abrir modal)
 
         // C. Limpiar URL
         window.history.replaceState({}, document.title, window.location.pathname);

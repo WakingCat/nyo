@@ -72,8 +72,8 @@ class TransferService:
             True si fue exitoso
         """
         solicitud = SolicitudTraslado.query.get(solicitud_id)
-        # Solo puede aprobar si está pendiente de coordinador (o 'pendiente' legacy)
-        if not solicitud or solicitud.estado not in ['pendiente_coordinador', 'pendiente']:
+        # Puede aprobar si está en cualquier estado pendiente de coordinador
+        if not solicitud or solicitud.estado not in ['pendiente_coordinador', 'pendiente_coordinador_hydro', 'pendiente']:
             return False
         
         solicitud.estado = 'aprobado'

@@ -168,7 +168,20 @@ def lab_cementerio():
 @supervisor_or_admin_required()  # Solo supervisores y admins
 def monitor():
     """Monitor de historial - Solo para supervisores+"""
-    historial = Movimiento.query.order_by(Movimiento.fecha_hora.desc()).limit(50).all()
+    sn_filter = request.args.get('sn', '').strip()
+    
+    query = Movimiento.query.order_by(Movimiento.fecha_hora.desc())
+    
+    if sn_filter:
+        # Filtrar movimientos que contengan el SN en referencia_miner o datos_nuevos
+        query = query.filter(
+            db.or_(
+                Movimiento.referencia_miner.ilike(f'%{sn_filter}%'),
+                Movimiento.datos_nuevos.ilike(f'%{sn_filter}%')
+            )
+        )
+    
+    historial = query.limit(100).all()
     return render_template('admin/monitor.html', historial=historial)
 
 @main_bp.route('/dashboard/<int:wh>/<int:rack>')

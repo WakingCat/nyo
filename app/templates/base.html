@@ -75,6 +75,14 @@
                         </a>
                     </li>
 
+                    {# Ver Contenedores - Solo para Site Manager y Coordinador Hydro #}
+                    {% if session.get('role') in ['Site Manager', 'Coordinador Hydro'] %}
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-white d-flex align-items-center gap-2" href="/dashboard-hydro">
+                            <i class="bi bi-box-seam text-info"></i> Ver Contenedores
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item mb-2">
                         <a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('conciliacion_dash.dashboard') }}">
                             <i class="bi bi-tools text-warning"></i> Mis Conciliaciones
