@@ -60,7 +60,9 @@
                     
                     {# Enlace a Solicitudes de Traslado - Visible para todos pero con badge para Coordinadores #}
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-white d-flex align-items-center justify-content-between" href="{{ url_for('transfers.panel') }}">
+                        <a class="nav-link text-white d-flex align-items-center justify-content-between" 
+                           href="{{ url_for('transfers.panel') }}"
+                           onclick="var el = document.getElementById('solicitudes-traslado'); if(el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); return false; }">
                             <span><i class="bi bi-arrow-left-right text-warning"></i> Solicitudes Traslado</span>
                             {% if session.get('role') in ['Site Manager', 'Coordinador'] %}
                             <span class="badge bg-warning text-dark" 

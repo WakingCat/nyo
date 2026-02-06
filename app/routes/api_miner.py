@@ -36,6 +36,13 @@ def get_miner_data(wh, rack, f, c):
     m = miner_service.get_miner_by_position(wh, rack, f, c)
     
     if m:
+        # Check if there's a pending transfer request
+        from app.models.solicitud import SolicitudTraslado
+        traslado_pendiente = SolicitudTraslado.query.filter(
+            SolicitudTraslado.miner_id == m.id,
+            SolicitudTraslado.estado.in_(['pendiente_lab', 'pendiente_coordinador', 'pendiente_coordinador_hydro', 'pendiente', 'aprobado'])
+        ).first() is not None
+        
         return jsonify({
             'id': m.id,
             'modelo': m.modelo,
@@ -54,7 +61,8 @@ def get_miner_data(wh, rack, f, c):
             'proceso_estado': m.proceso_estado,
             'diagnostico': m.diagnostico_detalle,
             'diagnostico_detalle': m.diagnostico_detalle,
-            'log': m.log_detalle
+            'log': m.log_detalle,
+            'traslado_pendiente': traslado_pendiente
         })
     
     return jsonify({})

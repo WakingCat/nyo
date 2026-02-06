@@ -4,7 +4,7 @@ import sys
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app import create_app, db
-from app.models.user import User, Movimiento
+from app.models.user import User, Movimiento, Role
 from app.models.miner import Miner
 from app.models.solicitud import SolicitudTraslado
 from app.models.solicitud_pieza import SolicitudPieza
@@ -77,6 +77,8 @@ def migrate_table(Model, name):
         print(f"   ❌ Error migrando {name}: {e}")
 
 # ORDEN DE MIGRACIÓN
+# Primero roles (User depende de Role)
+migrate_table(Role, "Roles")
 migrate_table(User, "Usuarios")
 migrate_table(InventarioPieza, "Inventario de Piezas")
 migrate_table(Miner, "Mineros")

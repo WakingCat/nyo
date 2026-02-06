@@ -43,7 +43,7 @@ def lab_reject(solicitud_id: int, user_id: int, motivo: str) -> bool:
         
     db.session.add(Movimiento(
         usuario_id=user_id,
-        accion="RECHAZO LAB",
+        accion="TRASLADO CANCELADO",
         referencia_miner=f"SN: {solicitud.miner.sn_fisica}",
         datos_nuevos=f"Motivo: {motivo}"
     ))

@@ -228,6 +228,18 @@ function abrirModalMinerDirecto(data, wh, rack, fila, columna) {
             btnsRMA.style.display = 'block';
             form.style.display = 'none';
 
+            // Ocultar botón Cancelar RMA si hay traslado pendiente
+            const btnCancelarRMA = document.querySelector('#btns-rma button[onclick="cancelarRMA()"]');
+            const btnSolicitarTraslado = document.querySelector('#btns-rma button[onclick="solicitarTrasladoRMA()"]');
+            if (btnCancelarRMA && data.traslado_pendiente) {
+                btnCancelarRMA.style.display = 'none';
+                // También ocultar solicitar traslado si ya está pendiente
+                if (btnSolicitarTraslado) btnSolicitarTraslado.style.display = 'none';
+            } else {
+                if (btnCancelarRMA) btnCancelarRMA.style.display = 'block';
+                if (btnSolicitarTraslado) btnSolicitarTraslado.style.display = 'block';
+            }
+
             // Render info RMA (igual que antes)
             renderRMAInfo(data, form);
         } else {
