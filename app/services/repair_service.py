@@ -183,15 +183,17 @@ class RepairService:
         return True
     
     @staticmethod
-    def return_to_warehouse(miner_id: int, wh: int, rack: int = None, fila: int = None, columna: int = None):
+    def return_to_warehouse(miner_id: int, wh: int, rack: int = None, fila: int = None, columna: int = None, use_origin: bool = False):
         """
         Devuelve un minero del Stock Lab al warehouse
         Si no se especifican rack/fila/columna, queda en estado 'pendiente_colocacion'
+        Si use_origin=True, busca la ubicación original de la solicitud de traslado
         
         Args:
             miner_id: ID del minero
             wh: warehouse destino
             rack, fila, columna: Posición destino (opcionales)
+            use_origin: Si True, intenta volver a la ubicación original
             
         Returns:
             dict con 'success' (bool) y 'message' (str) o 'error' (str)
@@ -199,6 +201,20 @@ class RepairService:
         minero = Miner.query.get(miner_id)
         if not minero or minero.proceso_estado != 'stock_lab':
             return {'success': False, 'error': 'Minero no encontrado o no está en stock lab'}
+        
+        # Si use_origin=True, buscar la solicitud de traslado original para obtener coordenadas
+        if use_origin:
+            from app.models.solicitud import SolicitudTraslado
+            solicitud = SolicitudTraslado.query.filter(
+                SolicitudTraslado.miner_id == miner_id,
+                SolicitudTraslado.estado == 'ejecutado'
+            ).order_by(SolicitudTraslado.fecha_solicitud.desc()).first()
+            
+            if solicitud and solicitud.origen_wh and solicitud.origen_rack:
+                wh = solicitud.origen_wh
+                rack = solicitud.origen_rack
+                fila = solicitud.origen_fila
+                columna = solicitud.origen_columna
         
         # Si vienen coordenadas completas -> Verificar que la posición NO esté ocupada
         if rack and fila and columna:

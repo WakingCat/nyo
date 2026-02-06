@@ -360,3 +360,44 @@ def reinstalar_equipo():
     
     error_msg = result.get('error', 'Error al reinstalar')
     return jsonify({'status': 'error', 'message': error_msg}), 400
+
+
+@lab_bp.route('/api/reinstalar-origen', methods=['POST'])
+@login_required
+@lab_technician_required()
+def reinstalar_al_origen():
+    """Reinstala un equipo Hydro a su posición original antes del traslado"""
+    data = request.get_json(silent=True) or request.form
+    
+    miner_id = data.get('id')
+    
+    if not miner_id:
+        return jsonify({'status': 'error', 'message': 'ID de minero requerido'}), 400
+    
+    minero = Miner.query.get(miner_id)
+    if not minero:
+        return jsonify({'status': 'error', 'message': 'Minero no encontrado'}), 404
+    
+    # Usar servicio con use_origin=True
+    result = repair_service.return_to_warehouse(
+        int(miner_id),
+        wh=100,  # Hydro WH ID
+        use_origin=True
+    )
+    
+    if result.get('success'):
+        # Obtener ubicación actual
+        destino_str = minero.ubicacion_str if minero.warehouse_id else "Origen"
+            
+        db.session.add(Movimiento(
+            usuario_id=session['user_id'],
+            accion="REINSTALACIÓN ORIGEN",
+            referencia_miner=f"SN: {minero.sn_fisica}",
+            datos_nuevos=f"Reinstalado en {destino_str}"
+        ))
+        db.session.commit()
+        
+        return jsonify({'status': 'ok', 'message': f'Equipo reinstalado en posición original'})
+    
+    error_msg = result.get('error', 'Error al reinstalar')
+    return jsonify({'status': 'error', 'message': error_msg}), 400

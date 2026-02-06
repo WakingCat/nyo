@@ -159,9 +159,14 @@ function setReinstalarData(id, sn, sector) {
         divWh.style.display = 'none';
         msgHydro.style.display = 'block';
         
-        // Configurar para Hydro
+        // Configurar para Hydro - usar endpoint de reinstalar al origen
         selectWh.value = '100'; // Valor fijo Hydro
         selectWh.required = false;
+        
+        // Cambiar endpoint para usar reinstalar-origen
+        btnReinstalar.setAttribute('hx-post', '/lab/api/reinstalar-origen');
+        btnReinstalar.setAttribute('hx-vals', 'js:{ id: document.getElementById("reinstalar-id").value }');
+        htmx.process(btnReinstalar);
         
         btnReinstalar.innerHTML = '<i class="bi bi-box-arrow-in-down me-2"></i> Enviar a Contenedor Original';
         btnReinstalar.classList.remove('btn-success');
@@ -170,9 +175,20 @@ function setReinstalarData(id, sn, sector) {
         divWh.style.display = 'block';
         msgHydro.style.display = 'none';
         
-        // Reset para WH
+        // Reset para WH - usar endpoint normal
         selectWh.value = '';
         selectWh.required = true;
+        
+        // Restaurar endpoint normal
+        btnReinstalar.setAttribute('hx-post', '/api/lab/reinstalar');
+        btnReinstalar.setAttribute('hx-vals', `js:{
+            id: document.getElementById('reinstalar-id').value,
+            wh: document.getElementById('reinstalar-wh').value,
+            rack: document.getElementById('reinstalar-rack').value,
+            fila: document.getElementById('reinstalar-fila').value,
+            columna: document.getElementById('reinstalar-columna').value
+        }`);
+        htmx.process(btnReinstalar);
         
         btnReinstalar.innerHTML = '<i class="bi bi-check-lg me-2"></i> Confirmar Reinstalación';
         btnReinstalar.classList.remove('btn-info');
