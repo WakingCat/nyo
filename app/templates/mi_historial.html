@@ -41,7 +41,7 @@
                     </thead>
                     <tbody>
                         {% for log in historial %}
-                        <tr>
+                        <tr class="{% if log.usuario.is_unauthorized_action((log.referencia_miner or '') ~ ' ' ~ (log.datos_nuevos or '')) %}table-danger border-danger{% endif %}">
                             <td class="ps-4 text-white font-monospace">
                                 {{ log.fecha_hora.strftime('%d/%m %H:%M') }}
                             </td>

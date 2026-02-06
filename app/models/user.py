@@ -1,6 +1,7 @@
 from app import db
 from datetime import datetime
 from sqlalchemy import Index
+import re
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -121,6 +122,68 @@ class User(db.Model):
             return [int(x.strip()) for x in self.wh_asignados.split(',')]
         except (ValueError, AttributeError):
             return []
+
+    def has_container_access(self, container_id: int) -> bool:
+        """Verifica acceso a un contenedor específico de Hydro"""
+        if not self.containers_asignados:
+            # Si tiene WH 100 pero no contenedores específicos, ¿tiene acceso a todos?
+            # Asumiremos que si no tiene contenedores definidos, NO tiene acceso a ninguno específico
+            # salvo que sea Admin/Site Manager (que se valida antes)
+            return False
+            
+        try:
+            c_list = [int(x.strip()) for x in self.containers_asignados.split(',')]
+            return container_id in c_list
+        except (ValueError, AttributeError):
+            return False
+
+    def is_unauthorized_action(self, log_text: str) -> bool:
+        """
+        Detecta si la acción descrita en el log ocurrió en una ubicación 
+        (WH o Contenedor) que el usuario NO tiene asignada.
+        """
+        if not log_text:
+            return False
+            
+        # Roles exentos de alerta (tienen acceso global implícito)
+        if self.role and self.role.nombre_puesto in ['Site Manager', 'Manager', 'Admin']:
+            return False
+            
+        # Buscar patrón WH y posible Rack (Contenedor en Hydro)
+        # Busca "WH1", "WH1-R5", "WH 100", etc.
+        # Grupo 1: ID Warehouse
+        # Grupo 2: ID Rack (Opcional, captura el dígito después de -R)
+        matches = re.finditer(r'WH\s*(\d+)(?:-R(\d+))?', log_text, re.IGNORECASE)
+        
+        assigned_whs = self.get_assigned_warehouses()
+        has_matches = False
+        
+        for m in matches:
+            has_matches = True
+            try:
+                wh_id = int(m.group(1))
+                
+                # Caso 1: WH Normal (!= 100)
+                if wh_id != 100:
+                    if wh_id not in assigned_whs:
+                        return True # Unauthorized!
+                
+                # Caso 2: Hydro (WH == 100)
+                else:
+                    # Si no tiene WH 100 asignado siquiera
+                    if 100 not in assigned_whs:
+                        return True
+                        
+                    # Si tiene WH 100, verificar contenedor (Rack)
+                    container_id_str = m.group(2)
+                    if container_id_str:
+                        container_id = int(container_id_str)
+                        if not self.has_container_access(container_id):
+                            return True # Unauthorized Container!
+            except ValueError:
+                continue
+                
+        return False
     
     def __repr__(self):
         return f'<User {self.username}>'
