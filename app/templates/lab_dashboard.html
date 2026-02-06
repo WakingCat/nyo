@@ -18,13 +18,7 @@
                 <tbody>
                     {% for m in solicitudes_pendientes %}
                     <tr>
-                        <td class="ps-4">
-                            {% if m.warehouse_id == 100 and m.rack_id % 2 == 0 %}
-                                WH {{ m.warehouse_id }} - R{{ m.rack_id }} ({{ m.fila + 7 }}-{{ m.columna }})
-                            {% else %}
-                                WH {{ m.warehouse_id }} - R{{ m.rack_id }} ({{ m.fila }}-{{ m.columna }})
-                            {% endif %}
-                        </td>
+                        <td class="ps-4">{{ m.ubicacion_str }}</td>
                         <td>{{ m.sn_antiguo if m.sn_antiguo else m.sn_fisica }}</td>
                         <td>
                             <span class="badge {% if m.proceso_estado == 'espera_aceptacion' %}bg-warning{% else %}bg-info{% endif %}">

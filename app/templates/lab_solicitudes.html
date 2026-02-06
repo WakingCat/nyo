@@ -24,7 +24,7 @@
                        hx-swap="innerHTML">
                     {% for m in solicitudes %}
                     <tr id="solicitud-{{ m.id }}">
-                        <td class="ps-4 text-warning">WH {{ m.warehouse_id or '?' }}</td>
+                        <td class="ps-4 text-warning">{{ m.ubicacion_corta }}</td>
                         <td>
                             <div class="fw-bold">{{ m.sn_fisica }}</div>
                             <div class="small text-white">{{ m.modelo }}</div>

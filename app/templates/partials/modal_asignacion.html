@@ -5,7 +5,7 @@
 <div class="modal-body bg-dark p-4">
     <div class="alert alert-info border-0 mb-4 text-white" style="background-color: rgba(13, 202, 240, 0.1);">
         <i class="bi bi-info-circle me-2"></i> Estás asignando un reemplazo para la posición 
-        <strong>WH{{ m.warehouse_id }}-R{{ m.rack_id }} ({{ m.fila }}-{{ m.columna }})</strong>
+        <strong>{{ m.ubicacion_str }}</strong>
     </div>
 
     <form hx-post="/api/lab/asignar" hx-target="body" onsubmit="cerrarModal()">

@@ -81,3 +81,35 @@ class Miner(db.Model):
 
     def __repr__(self):
         return f'<Miner {self.sn_fisica}>'
+    
+    @property
+    def ubicacion_str(self):
+        """Retorna string de ubicación formateado según sector (WH o Hydro)"""
+        if not self.warehouse_id:
+            return "Sin ubicación"
+        
+        HYDRO_WH_ID = 100
+        if self.warehouse_id == HYDRO_WH_ID:
+            # Hydro: Mostrar como C56-A-Fila-Col
+            container = (self.rack_id + 1) // 2 if self.rack_id else 0
+            rack_letra = 'A' if self.rack_id and self.rack_id % 2 == 1 else 'B'
+            fila = self.fila or 0
+            columna = self.columna or 0
+            return f"C{container}-{rack_letra}-{fila}-{columna}"
+        
+        # WH normal: WH1-R2 (3-4)
+        return f"WH{self.warehouse_id}-R{self.rack_id} ({self.fila}-{self.columna})"
+    
+    @property
+    def ubicacion_corta(self):
+        """Retorna ubicación corta sin fila/columna"""
+        if not self.warehouse_id:
+            return "Lab/Stock"
+        
+        HYDRO_WH_ID = 100
+        if self.warehouse_id == HYDRO_WH_ID:
+            container = (self.rack_id + 1) // 2 if self.rack_id else 0
+            rack_letra = 'A' if self.rack_id and self.rack_id % 2 == 1 else 'B'
+            return f"C{container}-{rack_letra}"
+        
+        return f"WH{self.warehouse_id}"

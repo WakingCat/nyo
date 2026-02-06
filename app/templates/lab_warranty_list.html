@@ -64,9 +64,9 @@
                         <td>
                             {% if miner.warehouse_id %}
                                 <span class="badge bg-warning text-dark">
-                                    <i class="bi bi-geo-alt-fill me-1"></i>WH {{ miner.warehouse_id }}
+                                    <i class="bi bi-geo-alt-fill me-1"></i>{{ miner.ubicacion_corta }}
                                 </span>
-                                <small class="d-block text-white-50 mt-1">Rack {{ miner.rack_id }} | F{{ miner.fila }} C{{ miner.columna }}</small>
+                                <small class="d-block text-white-50 mt-1">{{ miner.ubicacion_str }}</small>
                             {% elif 'LAB' in (miner.ubicacion_str or '') %}
                                 <span class="badge bg-info text-dark">
                                     <i class="bi bi-tools me-1"></i>LABORATORIO
