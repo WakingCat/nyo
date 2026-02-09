@@ -391,9 +391,37 @@ function abrirFormularioDiagnostico() {
     document.getElementById('diag-sn-digital').value = currentMinerData.sn_digital || '';
 
     // Reset campos
-    document.getElementById('diag-falla').value = '';
+    // Reset campos
     document.getElementById('diag-solucion').value = '';
     document.getElementById('diag-observacion').value = '';
+
+    // Configurar opciones de falla según si es Hydro (WH 100) o no
+    const selectFalla = document.getElementById('diag-falla');
+    selectFalla.innerHTML = '<option value="">Seleccionar...</option>';
+
+    let opciones = [];
+
+    // HYDRO ID = 100
+    if (parseInt(currentUbicacion.wh) === 100) {
+        // Fallas específicas de Hydro solicitadas
+        opciones = [
+            "Fuente", "CB", "Manguera", "Hashboard", "MAC cambiada",
+            "Válvula", "Cable de red", "Switch", "Desconocido", "RMA"
+        ];
+    } else {
+        // Fallas Normales (Aire/WH)
+        opciones = [
+            "Frecuencia", "Fuente (PSU)", "Control Board", "Fan",
+            "Hashboard", "Firmware", "PDU", "Red", "Switch", "Desconocido"
+        ];
+    }
+
+    opciones.forEach(op => {
+        const option = document.createElement('option');
+        option.value = op;
+        option.textContent = op;
+        selectFalla.appendChild(option);
+    });
 
     const modalDiag = new bootstrap.Modal(document.getElementById('modalDiagnostico'));
     modalDiag.show();
