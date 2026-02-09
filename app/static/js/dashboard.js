@@ -778,3 +778,66 @@ async function confirmarScrap(tipo) {
         } catch (e) { alert("Error."); }
     }
 }
+
+// ==========================================
+// 9. RENDER HELPERS (Estado Bloqueado / RMA)
+// ==========================================
+
+function renderLockedInfo(data, form) {
+    // Buscar o crear contenedor de info
+    let container = document.getElementById('rma-info-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'rma-info-container';
+        form.parentNode.insertBefore(container, form);
+    }
+
+    container.innerHTML = `
+        <div class="alert alert-danger border-danger bg-danger bg-opacity-10">
+            <h5 class="alert-heading"><i class="bi bi-lock-fill me-2"></i>EQUIPO BLOQUEADO</h5>
+            <hr>
+            <p class="mb-0">
+                <strong>Estado:</strong> ${data.proceso_estado.replace(/_/g, ' ').toUpperCase()}<br>
+                This miner is currently in a blocked state and cannot be modified directly.
+            </p>
+            ${data.traslado_pendiente ? '<div class="mt-2 badge bg-warning text-dark"><i class="bi bi-truck me-1"></i> TRASLADO PENDIENTE</div>' : ''}
+        </div>
+    `;
+}
+
+function renderRMAInfo(data, form) {
+    // Buscar o crear contenedor de info
+    let container = document.getElementById('rma-info-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'rma-info-container';
+        form.parentNode.insertBefore(container, form);
+    }
+
+    container.innerHTML = `
+        <div class="card bg-dark border-info mb-4">
+            <div class="card-header bg-info bg-opacity-10 text-info border-bottom border-info">
+                <i class="bi bi-info-circle-fill me-2"></i>DETALLE DEL DIAGNÓSTICO
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <small class="text-secondary d-block">Falla Detectada</small>
+                        <strong class="text-white">${data.diagnostico_detalle || 'N/A'}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-secondary d-block">IP Puerto</small>
+                        <span class="text-white font-monospace">${data.ip_address || 'N/A'}</span>
+                    </div>
+                    <div class="col-12 border-top border-secondary pt-2 mt-2">
+                        <small class="text-secondary d-block">SN Digital / Físico</small>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-info">${data.sn_digital || '-'}</span>
+                            <span class="text-warning">${data.sn_fisica || '-'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
