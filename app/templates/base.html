@@ -172,6 +172,54 @@
         </div>
     </div>
 
+    <!-- MODAL: EQUIPO YA DIAGNOSTICADO (RE-DIAGNÓSTICO VS RMA) -->
+    <div class="modal fade" id="modalDiagnosticado" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-warning shadow-lg">
+                <div class="modal-header border-bottom border-secondary bg-black">
+                    <h5 class="modal-title text-warning"><i class="bi bi-clipboard-check-fill me-2"></i>Equipo Diagnosticado</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning bg-dark border-warning mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle-fill fs-4 me-3 text-warning"></i>
+                            <div>
+                                <strong class="text-white" id="diagnosticado-title">Ubicación...</strong>
+                                <div class="text-warning small mt-1">Este equipo ya tiene un diagnóstico registrado.</div>
+                                <div class="text-white-50 small mt-1" id="diagnosticado-falla"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-secondary text-center mb-4">¿Qué acción desea realizar?</p>
+                    
+                    <div class="d-grid gap-3">
+                        <button class="btn btn-outline-info btn-lg py-3 hover-light" onclick="reDiagnosticar()">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-arrow-repeat fs-2 me-3"></i>
+                                <div class="text-start">
+                                    <span class="fw-bold d-block">DIAGNOSTICAR DE NUEVO</span>
+                                    <small class="text-white-50">Actualizar o corregir el diagnóstico</small>
+                                </div>
+                            </div>
+                        </button>
+                        
+                        <button class="btn btn-warning btn-lg py-3 text-dark" onclick="abrirFormularioRMA()">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-file-earmark-text fs-2 me-3"></i>
+                                <div class="text-start">
+                                    <span class="fw-bold d-block">FORMULARIO RMA</span>
+                                    <small class="text-dark">Solicitar traslado, conciliación o cancelar</small>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL FORMULARIO DIAGNÓSTICO -->
     <div class="modal fade" id="modalDiagnostico" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">

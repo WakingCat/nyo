@@ -153,11 +153,31 @@ async function abrirModal(wh, rack, fila, columna) {
         currentMinerData = data;
         currentUbicacion = { wh, rack, fila, columna };
 
-        // 1. Si ya tiene RMA o está en laboratorio -> ABRIR MODAL ANTIGUO DIRECTAMENTE
-        if (data.proceso_estado === 'en_laboratorio' || data.proceso_estado === 'en_reparacion' || data.diagnostico_detalle) {
+        const enLab = data.proceso_estado === 'en_laboratorio' || data.proceso_estado === 'en_reparacion';
+        const tieneDiagnostico = !!data.diagnostico_detalle;
+
+        // 1. Si está en laboratorio -> Abrir modal RMA antiguo directamente (estado bloqueado)
+        if (enLab) {
             abrirModalMinerDirecto(data, wh, rack, fila, columna);
         }
-        // 2. Si es un equipo "nuevo" o sin problemas -> ABRIR SELECCIÓN (Diagnóstico vs RMA)
+        // 2. Si tiene diagnóstico pero NO está en lab -> Mostrar opciones "Re-diagnosticar" o "Formulario RMA"
+        else if (tieneDiagnostico) {
+            // Mostrar ubicación y falla en el modal
+            let ubicacionTxt;
+            if (wh == HYDRO_WH_ID) {
+                const container = Math.ceil(rack / 2);
+                const rackLetra = rack % 2 === 1 ? 'A' : 'B';
+                ubicacionTxt = `C${container}-${rackLetra} (${fila}-${columna})`;
+            } else {
+                ubicacionTxt = `WH ${wh} - Rack ${rack} (${fila}-${columna})`;
+            }
+            document.getElementById('diagnosticado-title').innerText = ubicacionTxt;
+            document.getElementById('diagnosticado-falla').innerText = `Falla: ${data.diagnostico_detalle}`;
+
+            const modalDiagnosticado = new bootstrap.Modal(document.getElementById('modalDiagnosticado'));
+            modalDiagnosticado.show();
+        }
+        // 3. Si es un equipo "nuevo" o sin diagnóstico -> Abrir modal de selección (Diagnóstico)
         else {
             // Mostrar ubicación en formato correcto (Hydro vs WH)
             let ubicacionTxt;
@@ -367,6 +387,28 @@ function renderLockedInfo(data, form) {
 // === NUEVAS FUNCIONES DE FLUJO ===
 
 function abrirRMA() {
+    if (currentMinerData) {
+        abrirModalMinerDirecto(currentMinerData, currentUbicacion.wh, currentUbicacion.rack, currentUbicacion.fila, currentUbicacion.columna);
+    }
+}
+
+// === NUEVAS FUNCIONES PARA EQUIPO DIAGNOSTICADO ===
+
+function reDiagnosticar() {
+    // Cerrar modal de decisión
+    const modalDiagnosticado = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticado'));
+    if (modalDiagnosticado) modalDiagnosticado.hide();
+
+    // Abrir formulario de diagnóstico (igual que para equipo nuevo)
+    abrirFormularioDiagnostico();
+}
+
+function abrirFormularioRMA() {
+    // Cerrar modal de decisión
+    const modalDiagnosticado = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticado'));
+    if (modalDiagnosticado) modalDiagnosticado.hide();
+
+    // Abrir el modal de RMA directamente con los datos del minero
     if (currentMinerData) {
         abrirModalMinerDirecto(currentMinerData, currentUbicacion.wh, currentUbicacion.rack, currentUbicacion.fila, currentUbicacion.columna);
     }
