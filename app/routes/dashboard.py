@@ -333,5 +333,23 @@ def hydro_colocar():
 @supervisor_or_admin_required()
 def monitor():
     """Monitor de historial - Solo para supervisores+"""
-    historial = Movimiento.query.order_by(Movimiento.fecha_hora.desc()).limit(50).all()
+    from sqlalchemy import or_
+    
+    sn_query = request.args.get('sn', '').strip()
+    query = Movimiento.query
+    
+    if sn_query:
+        query = query.filter(
+            or_(
+                Movimiento.referencia_miner.ilike(f'%{sn_query}%'),
+                Movimiento.datos_nuevos.ilike(f'%{sn_query}%'),
+                Movimiento.accion.ilike(f'%{sn_query}%')
+            )
+        )
+        # Mostrar todo el historial coincidente (sin límite estricto de 50)
+        historial = query.order_by(Movimiento.fecha_hora.desc()).limit(200).all()
+    else:
+        # Por defecto, últimos 50
+        historial = query.order_by(Movimiento.fecha_hora.desc()).limit(50).all()
+        
     return render_template('admin/monitor.html', historial=historial)
