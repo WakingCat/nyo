@@ -139,6 +139,51 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+function toggleNoEnciendeLogUI() {
+    const noEnciende = !!document.getElementById('input-no-enciende')?.checked;
+    const logTextInput = document.getElementById('input-log');
+    const logFileInput = document.getElementById('input-log-file');
+    const statusText = document.getElementById('no-enciende-status');
+
+    if (logTextInput) {
+        logTextInput.disabled = noEnciende;
+        if (noEnciende) {
+            logTextInput.classList.remove('is-invalid');
+            if (!logTextInput.value.trim()) {
+                logTextInput.value = 'NO ENCIENDE';
+            }
+        } else if (logTextInput.value.trim().toUpperCase() === 'NO ENCIENDE') {
+            logTextInput.value = '';
+        }
+    }
+
+    if (logFileInput) {
+        logFileInput.disabled = noEnciende;
+        if (noEnciende) {
+            logFileInput.classList.remove('is-invalid');
+            logFileInput.value = '';
+        }
+    }
+
+    if (statusText) {
+        statusText.classList.remove('text-white-50', 'text-warning', 'text-success');
+        if (noEnciende) {
+            statusText.classList.add('text-success');
+            statusText.textContent = 'Estado: Log no requerido (equipo no enciende).';
+        } else {
+            statusText.classList.add('text-warning');
+            statusText.textContent = 'Estado: Log .txt requerido.';
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const noEnciendeCheckbox = document.getElementById('input-no-enciende');
+    if (!noEnciendeCheckbox) return;
+    noEnciendeCheckbox.addEventListener('change', toggleNoEnciendeLogUI);
+    toggleNoEnciendeLogUI();
+});
+
 // ==========================================
 // 3. FUNCIÓN PRINCIPAL: ABRIR MODAL
 // ==========================================
@@ -154,13 +199,19 @@ async function abrirModal(wh, rack, fila, columna) {
         currentUbicacion = { wh, rack, fila, columna };
 
         const enLab = data.proceso_estado === 'en_laboratorio' || data.proceso_estado === 'en_reparacion';
-        const tieneDiagnostico = !!data.diagnostico_detalle;
+        const enRMA = data.proceso_estado === 'en_rma';  // Ya tiene RMA enviado
+        const estadoBloqueado = data.proceso_estado === 'pendiente_traslado' || data.proceso_estado === 'Conciliando';
+        const tieneDiagnostico = !!data.diagnostico_detalle && !enRMA;  // Solo diagnóstico, sin RMA
 
-        // 1. Si está en laboratorio -> Abrir modal RMA antiguo directamente (estado bloqueado)
-        if (enLab) {
+        // 1. Si está en laboratorio o bloqueado -> Abrir modal directo (estado bloqueado)
+        if (enLab || estadoBloqueado) {
             abrirModalMinerDirecto(data, wh, rack, fila, columna);
         }
-        // 2. Si tiene diagnóstico pero NO está en lab -> Mostrar opciones "Re-diagnosticar" o "Formulario RMA"
+        // 2. Si ya tiene RMA enviado -> Mostrar solo opciones de traslado/conciliación/cancelar
+        else if (enRMA) {
+            abrirModalMinerDirecto(data, wh, rack, fila, columna);
+        }
+        // 3. Si tiene diagnóstico pero NO tiene RMA -> Mostrar opciones "Re-diagnosticar" o "Formulario RMA"
         else if (tieneDiagnostico) {
             // Mostrar ubicación y falla en el modal
             let ubicacionTxt;
@@ -241,8 +292,10 @@ function abrirModalMinerDirecto(data, wh, rack, fila, columna) {
         if (data.log) document.getElementById('input-log').value = data.log;
 
         // --- LÓGICA DE ESTADOS Y BOTONES ---
-        const tieneRMA = (data.proceso_estado === 'en_laboratorio' || data.proceso_estado === 'en_reparacion' || data.diagnostico_detalle);
+        const enRMA = data.proceso_estado === 'en_rma';  // RMA enviado, pendiente de acción
+        const enLab = data.proceso_estado === 'en_laboratorio' || data.proceso_estado === 'en_reparacion';
         const estadoBloqueado = (data.proceso_estado === 'pendiente_traslado' || data.proceso_estado === 'Conciliando');
+        const tieneRMA = enRMA || enLab;  // Cualquier estado de RMA activo
 
         // NUEVO: Si está en estado bloqueado, mostrar solo info sin opciones
         if (estadoBloqueado) {
@@ -268,7 +321,7 @@ function abrirModalMinerDirecto(data, wh, rack, fila, columna) {
             titulo.innerText += " (CON RMA)";
             btnsNormal.style.display = 'none';
             btnsRMA.style.display = 'block';
-            form.style.display = 'none';
+            form.style.display = 'none';  // Ocultar formulario, solo mostrar botones de acción
 
             // Ocultar botón Cancelar RMA si hay traslado pendiente
             const btnCancelarRMA = document.querySelector('#btns-rma button[onclick="cancelarRMA()"]');
@@ -433,8 +486,6 @@ function abrirFormularioDiagnostico() {
     document.getElementById('diag-sn-digital').value = currentMinerData.sn_digital || '';
 
     // Reset campos
-    // Reset campos
-    document.getElementById('diag-solucion').value = '';
     document.getElementById('diag-observacion').value = '';
 
     // Configurar opciones de falla según si es Hydro (WH 100) o no
@@ -448,7 +499,7 @@ function abrirFormularioDiagnostico() {
         // Fallas específicas de Hydro solicitadas
         opciones = [
             "Fuente", "CB", "Manguera", "Hashboard", "MAC cambiada",
-            "Válvula", "Cable de red", "Switch", "Desconocido", "RMA"
+            "Válvula", "Cable de red", "Switch", "Desconocido"
         ];
     } else {
         // Fallas Normales (Aire/WH)
@@ -469,28 +520,15 @@ function abrirFormularioDiagnostico() {
     modalDiag.show();
 }
 
-function checkSolucionDiag(val) {
-    if (val === 'RMA') {
-        if (confirm("Al seleccionar RMA serás redirigido al formulario de solicitud de repuestos/traslado. ¿Continuar?")) {
-            // Cerrar modal diag y abrir RMA
-            const modalDiag = bootstrap.Modal.getInstance(document.getElementById('modalDiagnostico'));
-            if (modalDiag) modalDiag.hide();
-            abrirRMA();
-        } else {
-            document.getElementById('diag-solucion').value = ''; // Resetear selección
-        }
-    }
-}
-
 async function guardarDiagnostico() {
     // Validar
     const falla = document.getElementById('diag-falla').value;
-    const solucion = document.getElementById('diag-solucion').value;
-
-    if (!falla || !solucion) {
-        alert("⚠️ Falla y Solución son obligatorios.");
+    if (!falla) {
+        alert("⚠️ Debes seleccionar la falla detectada.");
         return;
     }
+
+    const marcarSolucionadoInicial = false; // Siempre modo diagnóstico en esta etapa
 
     const payload = {
         wh: document.getElementById('diag-wh').value,
@@ -502,9 +540,9 @@ async function guardarDiagnostico() {
         sn_digital: document.getElementById('diag-sn-digital').value,
         sn_fisica: currentMinerData.sn_fisica, // Tomar del original para referencia
         falla: falla,
-        solucion: solucion,
+        solucion: '',
         observacion: document.getElementById('diag-observacion').value,
-        marcar_solucionado: (solucion === 'Solucionado')  // Flag para limpiar diagnóstico
+        marcar_solucionado: marcarSolucionadoInicial
     };
 
     try {
@@ -520,20 +558,8 @@ async function guardarDiagnostico() {
             // Cerrar modal diagnóstico
             bootstrap.Modal.getInstance(document.getElementById('modalDiagnostico'))?.hide();
 
-            // Si eligió RMA, abrir modal RMA con datos prellenados
-            if (solucion === 'RMA') {
-                alert("✅ Diagnóstico guardado. Ahora complete el formulario RMA.");
-                // Precargar datos en currentMinerData para el modal RMA
-                currentMinerData.diagnostico_detalle = `Falla: ${falla}`;
-                currentMinerData.falla_detectada = falla;
-                abrirModalMinerDirecto(currentMinerData, payload.wh, payload.rack, payload.fila, payload.columna);
-            } else if (solucion === 'Solucionado') {
-                alert("✅ Problema marcado como SOLUCIONADO. El equipo vuelve a estado operativo.");
-                location.reload();
-            } else {
-                alert("✅ Diagnóstico guardado correctamente.");
-                location.reload();
-            }
+            alert("✅ Diagnóstico guardado. El equipo queda en modo diagnóstico. Reabre para marcar solucionado o enviar a RMA.");
+            location.reload();
         } else {
             alert("Error: " + json.message);
         }
@@ -552,46 +578,12 @@ async function conciliarMiner() {
     const f = document.getElementById('input-fila').value;
     const c = document.getElementById('input-columna').value;
 
-    const datosPantalla = {
-        sn_digital: document.getElementById('input-sn-digital').value,
-        mac: document.getElementById('input-mac').value,
-        psu_sn: document.getElementById('input-psu').value,
-        psu_model: document.getElementById('input-psu-model').value,
-        cb_sn: document.getElementById('input-cb').value
-    };
-
-    const fallaActual = document.getElementById('input-falla').value;
-    let cantCoolers = "";
-
-    if (fallaActual === 'FAN') {
-        const input = prompt("🔧 FALLA DE VENTILACIÓN DETECTADA\n\nIngrese la CANTIDAD de coolers dañados:", "1");
-        if (input === null) return;
-        cantCoolers = input;
+    // Reutiliza la nueva lógica centralizada (rma_actions.js)
+    if (typeof iniciarConciliacion === 'function') {
+        return iniciarConciliacion(wh, rack, f, c);
     }
 
-    if (confirm("¿Confirmar conciliación y solicitud de repuestos en Sheets?")) {
-        try {
-            const btn = document.querySelector('button[onclick="conciliarMiner()"]');
-            if (btn) { btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ...'; btn.disabled = true; }
-
-            await fetch('/api/conciliar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    wh, rack, f, c,
-                    cant_coolers: cantCoolers,
-                    ...datosPantalla
-                })
-            });
-
-            alert("✅ Conciliación registrada y enviada con todos los datos.");
-            if (btn) { btn.innerHTML = '<i class="bi bi-check2-circle"></i> CONCILIAR'; btn.disabled = false; }
-
-        } catch (e) {
-            alert("Error al conciliar");
-            if (btn) btn.disabled = false;
-        }
-    }
+    alert('No se pudo iniciar la conciliación: componente no cargado. Recarga la página.');
 }
 
 // ==========================================
@@ -629,7 +621,7 @@ async function moverMiner() {
             const btn = document.querySelector('#btns-rma button[onclick="moverMiner()"]');
             if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ...'; }
 
-            await fetch('/api/mover', {
+            const resp = await fetch('/api/mover', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -638,10 +630,16 @@ async function moverMiner() {
                     ...datosPantalla
                 })
             });
-            alert("✅ Equipo retirado y datos completos exportados.");
+            const payload = await resp.json();
+
+            if (!resp.ok || payload.status !== 'ok') {
+                throw new Error(payload.message || 'No se pudo crear la solicitud');
+            }
+
+            alert(payload.message || "✅ Solicitud de traslado enviada a aprobación.");
             location.reload();
         } catch (e) {
-            alert("Error al mover.");
+            alert("Error al crear la solicitud: " + (e.message || 'Intenta nuevamente.'));
             if (btn) btn.disabled = false;
         }
     }
@@ -650,12 +648,16 @@ async function moverMiner() {
 // ==========================================
 // 6. ACCIÓN: ENVIAR A RMA (VALIDACIÓN)
 // ==========================================
-function validarYEnviarRMA() {
+async function validarYEnviarRMA() {
     document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
     let faltaAlgo = false;
     let mensajeError = "";
 
-    const camposUniversales = ['input-sn', 'input-ip-rma', 'input-mac', 'input-ths', 'input-falla', 'input-log'];
+    const noEnciende = !!document.getElementById('input-no-enciende')?.checked;
+    const camposUniversales = ['input-sn', 'input-ip-rma', 'input-mac', 'input-ths', 'input-falla'];
+    if (!noEnciende) {
+        camposUniversales.push('input-log');
+    }
     camposUniversales.forEach(id => {
         const input = document.getElementById(id);
         if (!input || !input.value.trim()) {
@@ -688,15 +690,71 @@ function validarYEnviarRMA() {
         }
     }
 
+    const logFileInput = document.getElementById('input-log-file');
+    const logFile = logFileInput && logFileInput.files ? logFileInput.files[0] : null;
+    if (!noEnciende) {
+        if (!logFile) {
+            faltaAlgo = true;
+            mensajeError = 'Debes adjuntar el archivo .txt del log para RMA.';
+            if (logFileInput) logFileInput.classList.add('is-invalid');
+        } else if (!String(logFile.name || '').toLowerCase().endsWith('.txt')) {
+            faltaAlgo = true;
+            mensajeError = 'El archivo de log debe ser .txt';
+            if (logFileInput) logFileInput.classList.add('is-invalid');
+        }
+    }
+
     if (faltaAlgo) {
         alert("⚠️ DATOS INCOMPLETOS:\n\n" + mensajeError);
         return;
     }
 
-    if (confirm("✅ Datos completos.\n\n¿Enviar a LABORATORIO y registrar en GOOGLE SHEETS?")) {
+    if (confirm("✅ Datos completos.\n\nSe registrará RMA y el log .txt se subirá a Drive.\nLa exportación a Sheets quedará en cola para las 17:00.\n\n¿Continuar?")) {
         const form = document.getElementById('formMiner');
-        form.action = "/api/rma/enviar_y_exportar";
-        form.submit();
+        const formData = new FormData(form);
+        
+        try {
+            const response = await fetch('/api/rma/enviar_y_exportar', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+                alert('❌ Error del servidor: ' + response.status);
+                return;
+            }
+            
+            const result = await response.json();
+            
+            if (result.status === 'ok') {
+                const driveTxt = result.log_drive_link ? `\nLog Drive: ${result.log_drive_link}` : '';
+                alert('✅ RMA registrado exitosamente. Exportación a Sheets en cola para las 17:00. Ahora puede solicitar traslado o conciliación.' + driveTxt);
+                
+                // Actualizar currentMinerData con el nuevo estado
+                currentMinerData.proceso_estado = 'en_rma';
+                currentMinerData.diagnostico_detalle = formData.get('diagnostico_detalle');
+                
+                // Cerrar modal actual y abrir el modal con opciones de RMA
+                const modalMiner = bootstrap.Modal.getInstance(document.getElementById('modalMiner'));
+                if (modalMiner) modalMiner.hide();
+                
+                // Pequeño delay para que se cierre el modal y luego abrir el nuevo
+                setTimeout(() => {
+                    abrirModalMinerDirecto(currentMinerData, currentUbicacion.wh, currentUbicacion.rack, currentUbicacion.fila, currentUbicacion.columna);
+                }, 300);
+            } else {
+                alert('❌ Error: ' + (result.message || 'Error al registrar RMA'));
+            }
+        } catch (error) {
+            console.error('Error al enviar RMA:', error);
+            alert('Error de conexión al registrar RMA');
+        }
     }
 }
 
@@ -709,6 +767,14 @@ async function cancelarRMA() {
     const f = document.getElementById('input-fila').value;
     const c = document.getElementById('input-columna').value;
 
+    const btn = document.querySelector('#btns-rma button[onclick="cancelarRMA()"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+        btn.dataset.originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Cancelando...';
+    }
+
     if (confirm("¿Fue un error? \n\nEste equipo volverá a estado OPERATIVO.")) {
         try {
             const response = await fetch('/api/rma/cancelar', {
@@ -719,6 +785,23 @@ async function cancelarRMA() {
             if (response.ok) { alert("✅ RMA Cancelado."); location.reload(); }
             else { alert("❌ Error al cancelar."); }
         } catch (e) { alert("Error de conexión."); }
+        finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('disabled');
+                if (btn.dataset.originalText) {
+                    btn.innerHTML = btn.dataset.originalText;
+                }
+            }
+        }
+    } else {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('disabled');
+            if (btn.dataset.originalText) {
+                btn.innerHTML = btn.dataset.originalText;
+            }
+        }
     }
 }
 
@@ -840,4 +923,81 @@ function renderRMAInfo(data, form) {
             </div>
         </div>
     `;
+}
+
+function abrirModalSolucionado() {
+    const modalDiag = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticado'));
+    if (modalDiag) modalDiag.hide();
+    const modalSol = new bootstrap.Modal(document.getElementById('modalSolucionado'));
+    modalSol.show();
+}
+
+// Marca como solucionado solicitando la solución aplicada
+async function marcarSolucionado() {
+    if (!currentMinerData) return;
+
+    const confirmBtn = document.getElementById('btn-confirm-solucionado');
+    const setLoadingState = () => {
+        if (!confirmBtn) return;
+        if (!confirmBtn.dataset.defaultText) {
+            confirmBtn.dataset.defaultText = confirmBtn.innerHTML;
+        }
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
+    };
+    const markDoneState = () => {
+        if (!confirmBtn) return;
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Listo';
+    };
+    const resetButtonState = () => {
+        if (!confirmBtn) return;
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = confirmBtn.dataset.defaultText || 'Confirmar';
+    };
+
+    const solucionElegida = document.getElementById('solucion-select').value;
+    if (!solucionElegida) {
+        alert('Selecciona una solución.');
+        return;
+    }
+
+    const payload = {
+        wh: currentUbicacion.wh,
+        rack: currentUbicacion.rack,
+        fila: currentUbicacion.fila,
+        columna: currentUbicacion.columna,
+        miner_id: currentMinerData.id,
+        falla: currentMinerData.diagnostico_detalle || 'Sin dato',
+        solucion: solucionElegida,
+        observacion: '',
+        ip: currentMinerData.ip_address || '',
+        sn_fisica: currentMinerData.sn_fisica || '',
+        sn_digital: currentMinerData.sn_digital || '',
+        marcar_solucionado: true
+    };
+
+    setLoadingState();
+    try {
+        const res = await fetch('/api/diagnostico/guardar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        if (res.ok) {
+            markDoneState();
+            bootstrap.Modal.getInstance(document.getElementById('modalSolucionado'))?.hide();
+            alert('✅ Equipo marcado como SOLUCIONADO. Se actualizó el historial.');
+            location.reload();
+        } else {
+            resetButtonState();
+            alert('Error: ' + json.message);
+        }
+    } catch (e) {
+        console.error(e);
+        resetButtonState();
+        alert('Error de conexión al marcar solucionado');
+    }
 }

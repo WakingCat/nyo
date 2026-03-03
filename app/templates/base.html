@@ -1,22 +1,390 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>N&O Tech - Gestión</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=2">
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="{{ url_for('static', filename='js/rma_actions.js') }}?v=2" defer></script>
+    <style>
+        /* --- INLINE DASHBOARD CSS FIX --- */
+        :root {
+            --bg-dark: #050608;
+            --panel-bg: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --accent: #ffc107;
+            --success: #238636;
+            --success-glow: #3fb950;
+            --danger: #da3633;
+            --info: #388bfd;
+            --empty: #21262d;
+            --text-main: #c9d1d9;
+            --text-white: #8b949e;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* RACK NAVIGATION */
+        .rack-navigation {
+            display: flex;
+            gap: 4px;
+            background: #010409;
+            padding: 5px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+            flex-wrap: wrap;
+        }
+
+        .btn-rack {
+            text-decoration: none;
+            color: var(--text-white);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: bold;
+            padding: 6px 14px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            background: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-rack:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #444;
+        }
+
+        .btn-rack.active {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.4);
+            border-color: var(--accent);
+        }
+
+        .btn-rack.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #fff;
+            opacity: 0.5;
+        }
+
+        /* MATRIX CONTAINER */
+        .matrix-container {
+            padding: 25px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+            overflow-x: auto !important;
+            position: relative;
+        }
+
+        .matrix-container::before,
+        .matrix-container::after {
+            content: '+';
+            position: absolute;
+            color: #333;
+            font-family: monospace;
+            font-size: 20px;
+            pointer-events: none;
+        }
+
+        .matrix-container::before {
+            top: 10px;
+            left: 10px;
+        }
+
+        .matrix-container::after {
+            top: 10px;
+            right: 10px;
+        }
+
+        /* MINER GRID */
+        .miner-grid {
+            display: grid !important;
+            grid-template-columns: repeat(15, 100px) !important;
+            gap: 8px !important;
+            width: max-content;
+            margin: 0 auto;
+            padding: 10px;
+            background: repeating-linear-gradient(45deg, #0d1117, #0d1117 10px, #11151c 10px, #11151c 20px);
+            border-radius: 6px;
+        }
+
+        /* MINER CARD */
+        .miner-card {
+            width: 100px !important;
+            height: 115px !important;
+            border-radius: 4px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            user-select: none;
+        }
+
+        /* STATES */
+        .status-ok {
+            background: linear-gradient(180deg, #1f242c 0%, #161b22 100%);
+            border: 1px solid #30363d;
+            border-top: 1px solid #444;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .status-ok::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--success-glow);
+            box-shadow: 0 0 6px var(--success-glow);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+                box-shadow: 0 0 10px var(--success-glow);
+            }
+
+            100% {
+                opacity: 0.5;
+            }
+        }
+
+        .status-empty {
+            background-color: #050608;
+            border: 1px dashed #30363d;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+            opacity: 0.6;
+        }
+
+        .status-empty i {
+            opacity: 0.2;
+        }
+
+        .status-empty:hover {
+            opacity: 1;
+            border-color: #555;
+            background-color: #0a0c10;
+        }
+
+        .status-in-rma {
+            background: repeating-linear-gradient(135deg, rgba(56, 139, 253, 0.1), rgba(56, 139, 253, 0.1) 10px, rgba(22, 27, 34, 0.8) 10px, rgba(22, 27, 34, 0.8) 20px);
+            border: 1px solid var(--info);
+        }
+
+        .status-in-rma::after {
+            content: 'LAB';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.5rem;
+            background: var(--info);
+            color: white;
+            padding: 1px 3px;
+            border-radius: 2px;
+        }
+
+        .status-conciliando {
+            background: repeating-linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.1) 10px, rgba(22, 27, 34, 0.8) 10px, rgba(22, 27, 34, 0.8) 20px);
+            border: 1px solid var(--accent);
+        }
+
+        .status-conciliando::after {
+            content: 'FIX';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.5rem;
+            background: var(--accent);
+            color: black;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        /* INTERACTION */
+        .miner-card:hover {
+            transform: translateY(-2px);
+            z-index: 5;
+            border-color: var(--accent);
+        }
+
+        .status-ok:hover {
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.2);
+        }
+
+        /* TEXTS */
+        .pos-label {
+            position: absolute;
+            top: 4px;
+            left: 5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            color: #484f58;
+            font-weight: bold;
+        }
+
+        .model-tag {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #e6edf3;
+            letter-spacing: -0.5px;
+            margin-top: 5px;
+        }
+
+        .hash-tag {
+            font-size: 0.65rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--success-glow);
+            background: rgba(35, 134, 54, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        /* MODAL & FORMS */
+        .modal {
+            z-index: 2000 !important;
+        }
+
+        .modal-backdrop {
+            z-index: 1900 !important;
+            background-color: rgba(0, 0, 0, 0.85);
+        }
+
+        .modal-content {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #010409 !important;
+            border: 1px solid #30363d !important;
+            color: #c9d1d9 !important;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.2) !important;
+        }
+
+        .sidebar .nav-link {
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .sidebar .nav-link:hover {
+            background: #21262d;
+            color: var(--accent) !important;
+        }
+
+        .hover-light:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            color: #fff !important;
+        }
+
+        .hover-white:hover {
+            color: #fff !important;
+        }
+
+        /* SEARCH ANIMATION */
+        @keyframes goldPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+                border-color: #ffc107;
+                transform: scale(1);
+            }
+
+            50% {
+                box-shadow: 0 0 30px 10px rgba(255, 193, 7, 0);
+                border-color: #fff;
+                transform: scale(1.15);
+                z-index: 100;
+                background-color: #2a240e;
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+                border-color: #ffc107;
+                transform: scale(1);
+            }
+        }
+
+        .shining-gold {
+            animation: goldPulse 1.5s infinite;
+            border: 2px solid #ffc107 !important;
+            z-index: 50;
+        }
+
+        /* HTMX */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .container-btn:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s;
+        }
+    </style>
+    <script src="{{ url_for('main.serve_asset', asset_name='htmx.min.js') }}"></script>
+    <script>
+    // Fallback: if htmx is blocked, lazy-load from CDN (inline safe)
+    if (typeof htmx === 'undefined') {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js';
+        s.defer = true;
+        document.head.appendChild(s);
+    }
+    </script>
+
 </head>
+
 <body class="bg-dark text-white">
 
     <div class="container-fluid">
         <div class="row">
-        {% if session.get('user_id') %}
-            <nav class="col-md-2 sidebar d-flex flex-column p-3 border-end border-secondary vh-100 sticky-top overflow-y-auto" style="background-color: #0b0c10;">
-                
+            {% if session.get('user_id') %}
+            <nav class="col-md-2 sidebar d-flex flex-column p-3 border-end border-secondary vh-100 sticky-top overflow-y-auto"
+                style="background-color: #0b0c10;">
+
                 <div class="text-center mb-3">
                     <h4 class="text-warning fw-bold tracking-wider">N&O TECH</h4>
                     <div class="badge bg-secondary text-light opacity-50">SISTEMA v1.0</div>
@@ -24,97 +392,134 @@
 
                 <div class="mb-4 px-1">
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-dark border-secondary" style="color: #adb5bd;"><i class="bi bi-search"></i></span>
-                        <input type="text" 
-                               id="globalSearch" 
-                               class="form-control bg-dark text-white border-secondary" 
-                               placeholder="Buscar SN o IP..." 
-                               onkeydown="handleSearch(event)"
-                               style="color: #fff !important;">
+                        <span class="input-group-text bg-dark border-secondary" style="color: #adb5bd;"><i
+                                class="bi bi-search"></i></span>
+                        <input type="text" id="globalSearch" class="form-control bg-dark text-white border-secondary"
+                            placeholder="Buscar SN o IP..." onkeydown="handleSearch(event)"
+                            style="color: #fff !important;">
                     </div>
                 </div>
 
                 <ul class="nav flex-column mb-auto">
-                    <li class="nav-item mb-2"><a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('main.index') }}"><i class="bi bi-speedometer2 text-info"></i> Inicio</a></li>
-                    
+                    <li class="nav-item mb-2"><a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('main.index') }}"><i class="bi bi-speedometer2 text-info"></i> Inicio</a>
+                    </li>
+
                     {% set user_role = session.get('role', '') %}
-                    {% if 'Site Manager' in user_role or 'Coordinador' in user_role %}
-                    <li class="nav-item mb-2"><a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('main.monitor') }}"><i class="bi bi-activity text-success"></i> Monitor</a></li>
-                    <li class="nav-item mb-2"><a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('diagnostico.historial_diagnosticos') }}"><i class="bi bi-clipboard-data text-info"></i> Diagnóstico</a></li>
+                    {% set is_field_staff = ('Supervisor' in user_role) or (('Tecnico' in user_role or 'Técnico' in user_role) and 'Lab' not in user_role) %}
+                    {% set is_manager_or_coord = 'Site Manager' in user_role or 'Coordinador' in user_role %}
+                    {% set is_lab_role = 'Tecnico Lab' in user_role or 'Técnico de Laboratorio' in user_role %}
+
+                    {% if is_manager_or_coord %}
+                    <li class="nav-item mb-2"><a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('main.monitor') }}"><i class="bi bi-activity text-success"></i> Monitor</a>
+                    </li>
+                        <li class="nav-item mb-2"><a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('main.it_health') }}"><i class="bi bi-memory text-info"></i> Salud IT</a>
+                        </li>
+                    <li class="nav-item mb-2"><a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('diagnostico.historial_diagnosticos') }}"><i
+                                class="bi bi-clipboard-data text-info"></i> Diagnóstico</a></li>
                     {% endif %}
 
                     {# Link Panel Laboratorio - Visible para Coordinadores y Lab #}
-                    {% set user_role = session.get('role', '') %}
-                    {% if 'Site Manager' in user_role or 'Coordinador' in user_role or 'Tecnico Lab' in user_role or 'Técnico de Laboratorio' in user_role or 'Supervisor' in user_role %}
+                    {% if is_manager_or_coord or is_lab_role %}
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('lab_approvals.panel') }}">
+                        <a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('lab_approvals.panel') }}">
                             <i class="bi bi-shield-check text-info"></i> Pre-Aprobación Lab
                         </a>
                     </li>
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('lab_routes.garantias') }}">
+                        <a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('lab_routes.garantias') }}">
                             <i class="bi bi-calendar-check text-warning"></i> Garantías
                         </a>
                     </li>
                     {% endif %}
-                    
-                    {# Enlace a Solicitudes de Traslado - Visible para todos pero con badge para Coordinadores #}
+
+                    {# Historial Diagnóstico para Supervisores/Técnicos #}
+                    {% if is_field_staff and not is_manager_or_coord %}
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-white d-flex align-items-center justify-content-between" 
-                           href="{{ url_for('transfers.panel') }}"
-                           onclick="var el = document.getElementById('solicitudes-traslado'); if(el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); return false; }">
+                        <a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('diagnostico.mi_historial_diagnosticos') }}">
+                            <i class="bi bi-clipboard2-data text-info"></i> Historial Diagnóstico
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {# Enlace a Solicitudes de Traslado - Visible para todos pero con badge para Coordinadores #}
+                    {% if not is_field_staff %}
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-white d-flex align-items-center justify-content-between"
+                            href="{{ url_for('transfers.panel') }}"
+                            onclick="var el = document.getElementById('solicitudes-traslado'); if(el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); return false; }">
                             <span><i class="bi bi-arrow-left-right text-warning"></i> Solicitudes Traslado</span>
                             {% if session.get('role') in ['Site Manager', 'Coordinador'] %}
-                            <span class="badge bg-warning text-dark" 
-                                  hx-get="{{ url_for('transfers.badge_count') }}"
-                                  hx-trigger="every 10s, transferApproved from:body"
-                                  hx-swap="innerHTML">
+                            <span class="badge bg-warning text-dark" hx-get="{{ url_for('transfers.badge_count') }}"
+                                hx-trigger="every 10s, transferApproved from:body" hx-swap="innerHTML">
                                 0
                             </span>
                             {% endif %}
                         </a>
                     </li>
+                    {% endif %}
 
                     {# Ver Contenedores - Solo para Site Manager y Coordinador Hydro #}
                     {% if session.get('role') in ['Site Manager', 'Coordinador Hydro'] %}
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-white d-flex align-items-center gap-2" href="/dashboard-hydro">
+                        <a class="nav-link text-white d-flex align-items-center gap-2" href="/dashboard/hydro">
                             <i class="bi bi-box-seam text-info"></i> Ver Contenedores
                         </a>
                     </li>
                     {% endif %}
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('conciliacion_dash.dashboard') }}">
+                        <a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('conciliacion_dash.dashboard') }}">
                             <i class="bi bi-tools text-warning"></i> Mis Conciliaciones
                         </a>
                     </li>
+                    {% if not is_manager_or_coord and not is_lab_role %}
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-white d-flex align-items-center gap-2" href="{{ url_for('main.mi_historial') }}">
+                        <a class="nav-link text-white d-flex align-items-center gap-2"
+                            href="{{ url_for('main.mi_historial') }}">
                             <i class="bi bi-clock-history text-info"></i> Mi Historial de Grupo
                         </a>
                     </li>
-                    
-                    <hr class="text-secondary my-3 opacity-25">
-
-                    {% set user_role = session.get('role', '') %}
-                    {% if session.get('mis_wh') and 'Coordinador' not in user_role and 'Site Manager' not in user_role and 'Manager' not in user_role %}
-                        <div class="mb-3">
-                            <p class="small text-warning text-uppercase fw-bold px-3 mb-2" style="font-size: 0.7rem;"><i class="bi bi-star-fill me-1"></i> Mis Zonas</p>
-                            {% for w in session.get('mis_wh') %}
-                            <li class="nav-item"><a class="nav-link py-2 text-white hover-light fw-bold d-flex align-items-center" href="/dashboard/{{ w }}/1" style="background: rgba(255, 193, 7, 0.08); border-left: 3px solid var(--accent); margin-bottom: 4px; border-radius: 0 4px 4px 0;"><i class="bi bi-geo-alt-fill me-2 text-warning"></i> WH {{ w }}</a></li>
-                            {% endfor %}
-                        </div>
                     {% endif %}
 
-                    {% if session.get('depto') != 'Hydro' %}
+                    <hr class="text-secondary my-3 opacity-25">
+
+                        {% if session.get('mis_wh') and 'Coordinador' not in user_role and 'Site Manager' not in user_role
+                        and 'Manager' not in user_role and not is_field_staff %}
+                    <div class="mb-3">
+                        <p class="small text-warning text-uppercase fw-bold px-3 mb-2" style="font-size: 0.7rem;"><i
+                                class="bi bi-star-fill me-1"></i> Mis Zonas</p>
+                        {% for w in session.get('mis_wh') %}
+                        <li class="nav-item"><a
+                                class="nav-link py-2 text-white hover-light fw-bold d-flex align-items-center"
+                                href="/dashboard/{{ w }}/1"
+                                style="background: rgba(255, 193, 7, 0.08); border-left: 3px solid var(--accent); margin-bottom: 4px; border-radius: 0 4px 4px 0;"><i
+                                    class="bi bi-geo-alt-fill me-2 text-warning"></i> WH {{ w }}</a></li>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if session.get('depto') != 'Hydro' and not is_field_staff %}
                     <div class="mt-1">
-                        <button class="btn d-flex align-items-center justify-content-between w-100 px-3 py-2 fw-bold border-0 bg-transparent" style="color: #adb5bd;" data-bs-toggle="collapse" data-bs-target="#wh-collapse">
+                        <button
+                            class="btn d-flex align-items-center justify-content-between w-100 px-3 py-2 fw-bold border-0 bg-transparent"
+                            style="color: #adb5bd;" data-bs-toggle="collapse" data-bs-target="#wh-collapse">
                             <span><i class="bi bi-grid me-2"></i> TODOS LOS WH</span><i class="bi bi-chevron-down"></i>
                         </button>
                         <div class="collapse" id="wh-collapse">
-                            <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small mt-1 ps-2 border-start border-secondary ms-3">
+                            <ul
+                                class="btn-toggle-nav list-unstyled fw-normal pb-1 small mt-1 ps-2 border-start border-secondary ms-3">
                                 {% for w in range(1, 11) %}
-                                <li><a href="/dashboard/{{ w }}/1" class="nav-link py-1 text-secondary d-flex align-items-center hover-white"><span style="width: 20px; text-align: center;">{{ w }}</span><span class="ms-2">Warehouse</span></a></li>
+                                <li><a href="/dashboard/{{ w }}/1"
+                                        class="nav-link py-1 text-secondary d-flex align-items-center hover-white"><span
+                                            style="width: 20px; text-align: center;">{{ w }}</span><span
+                                            class="ms-2">Warehouse</span></a></li>
                                 {% endfor %}
                             </ul>
                         </div>
@@ -126,17 +531,50 @@
                     <div class="d-flex align-items-center mb-3 px-2">
                         <div class="flex-grow-1 overflow-hidden">
                             <small class="d-block text-white fw-bold">{{ session.get('username', 'Usuario') }}</small>
-                            <small class="d-block text-uppercase" style="font-size: 0.65rem; color: #adb5bd;">{{ session.get('role', 'Técnico') }}</small>
+                            <small class="d-block text-uppercase" style="font-size: 0.65rem; color: #adb5bd;">{{
+                                session.get('role', 'Técnico') }}</small>
                         </div>
                     </div>
-                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger w-100 btn-sm fw-bold"><i class="bi bi-box-arrow-right"></i> SALIR</a>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger w-100 btn-sm fw-bold"><i
+                            class="bi bi-box-arrow-right"></i> SALIR</a>
                 </div>
             </nav>
-        {% endif %}
+            {% endif %}
 
-            <main class="{{ 'col-md-10' if session.get('user_id') else 'col-12' }} p-4" style="background-color: #06070a;" id="main-area">
+            <main class="{{ 'col-md-10' if session.get('user_id') else 'col-12' }} p-4"
+                style="background-color: #06070a;" id="main-area">
                 {% block content %}{% endblock %}
             </main>
+        </div>
+    </div>
+
+    <!-- MODAL: SELECCIONAR SOLUCIÓN PARA CERRAR DIAGNÓSTICO -->
+    <div class="modal fade" id="modalSolucionado" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark border-success text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-success"><i class="bi bi-check-circle me-2"></i>Marcar como Solucionado</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label small text-white-50">Selecciona la solución aplicada *</label>
+                    <select class="form-select bg-black text-white border-secondary" id="solucion-select">
+                        <option value="">Seleccionar...</option>
+                        <option value="Reinicio interfaz">Reinicio desde la interfaz</option>
+                        <option value="Restauración y FW">Restauración y Firmware</option>
+                        <option value="Reinicio manual">Reinicio físico (Manual)</option>
+                        <option value="Crimpeo Ethernet">Crimpeo Cable Ethernet</option>
+                        <option value="Firmware Update">Actualización Firmware</option>
+                        <option value="Reinicio PDU">Reinicio PDU</option>
+                        <option value="Cambio de manguera">Cambio de manguera</option>
+                        <option value="Restauración">Solo Restauración</option>
+                    </select>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="btn-confirm-solucionado" onclick="marcarSolucionado()">Confirmar</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -145,13 +583,14 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark border-secondary shadow-lg">
                 <div class="modal-header border-bottom border-secondary bg-black">
-                    <h5 class="modal-title text-white"><i class="bi bi-gear-wide-connected me-2"></i>Gestión de Equipo</h5>
+                    <h5 class="modal-title text-white"><i class="bi bi-gear-wide-connected me-2"></i>Gestión de Equipo
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4 text-center">
                     <h4 class="text-white mb-2" id="decision-title">Ubicación...</h4>
                     <p class="text-secondary mb-4">¿Qué acción desea realizar?</p>
-                    
+
                     <div class="d-grid gap-3">
                         <button class="btn btn-info btn-lg py-3 hover-light" onclick="abrirFormularioDiagnostico()">
                             <i class="bi bi-clipboard-check fs-1 mb-2 d-block"></i>
@@ -159,10 +598,10 @@
                             <div class="small text-white-50 mt-1">Registrar diagnóstico y decidir acción</div>
                         </button>
                     </div>
-                    
+
                     <div class="text-start mt-4 p-3 bg-black rounded border border-secondary">
                         <small class="text-secondary">
-                            <i class="bi bi-info-circle me-1"></i> 
+                            <i class="bi bi-info-circle me-1"></i>
                             Debe registrar un diagnóstico antes de poder enviar a RMA o solicitar piezas.
                             Si el problema se soluciona durante el diagnóstico, podrá marcarlo como resuelto.
                         </small>
@@ -177,7 +616,8 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark border-warning shadow-lg">
                 <div class="modal-header border-bottom border-secondary bg-black">
-                    <h5 class="modal-title text-warning"><i class="bi bi-clipboard-check-fill me-2"></i>Equipo Diagnosticado</h5>
+                    <h5 class="modal-title text-warning"><i class="bi bi-clipboard-check-fill me-2"></i>Equipo
+                        Diagnosticado</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -186,31 +626,42 @@
                             <i class="bi bi-info-circle-fill fs-4 me-3 text-warning"></i>
                             <div>
                                 <strong class="text-white" id="diagnosticado-title">Ubicación...</strong>
-                                <div class="text-warning small mt-1">Este equipo ya tiene un diagnóstico registrado.</div>
+                                <div class="text-warning small mt-1">Este equipo ya tiene un diagnóstico registrado.
+                                </div>
                                 <div class="text-white-50 small mt-1" id="diagnosticado-falla"></div>
                             </div>
                         </div>
                     </div>
-                    
-                    <p class="text-secondary text-center mb-4">¿Qué acción desea realizar?</p>
-                    
+
+                        <p class="text-secondary text-center mb-4">El equipo está en modo diagnóstico.</p>
+
                     <div class="d-grid gap-3">
-                        <button class="btn btn-outline-info btn-lg py-3 hover-light" onclick="reDiagnosticar()">
+                        <button class="btn btn-success btn-lg py-3" onclick="abrirModalSolucionado()">
                             <div class="d-flex align-items-center justify-content-center">
-                                <i class="bi bi-arrow-repeat fs-2 me-3"></i>
+                                <i class="bi bi-check-circle fs-2 me-3"></i>
                                 <div class="text-start">
-                                    <span class="fw-bold d-block">DIAGNOSTICAR DE NUEVO</span>
-                                    <small class="text-white-50">Actualizar o corregir el diagnóstico</small>
+                                    <span class="fw-bold d-block">SOLUCIONADO</span>
+                                    <small class="text-white-50">Elegir solución y cerrar diagnóstico</small>
                                 </div>
                             </div>
                         </button>
-                        
+
                         <button class="btn btn-warning btn-lg py-3 text-dark" onclick="abrirFormularioRMA()">
                             <div class="d-flex align-items-center justify-content-center">
                                 <i class="bi bi-file-earmark-text fs-2 me-3"></i>
                                 <div class="text-start">
                                     <span class="fw-bold d-block">FORMULARIO RMA</span>
-                                    <small class="text-dark">Solicitar traslado, conciliación o cancelar</small>
+                                    <small class="text-dark">Traslado o conciliación</small>
+                                </div>
+                            </div>
+                        </button>
+
+                        <button class="btn btn-outline-info btn-lg py-3 hover-light" onclick="reDiagnosticar()">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-arrow-repeat fs-2 me-3"></i>
+                                <div class="text-start">
+                                    <span class="fw-bold d-block">RE-DIAGNOSTICAR</span>
+                                    <small class="text-white-50">Actualizar el problema</small>
                                 </div>
                             </div>
                         </button>
@@ -235,8 +686,9 @@
                         <input type="hidden" id="diag-fila">
                         <input type="hidden" id="diag-columna">
                         <input type="hidden" id="diag-miner-id">
-                        
-                        <div class="alert alert-dark border-secondary mb-4 d-flex justify-content-between align-items-center">
+
+                        <div
+                            class="alert alert-dark border-secondary mb-4 d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary d-block">Ubicación</small>
                                 <strong class="text-white" id="diag-ubicacion-txt">...</strong>
@@ -250,20 +702,23 @@
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label small text-white-50">IP Address</label>
-                                <input type="text" class="form-control bg-black text-white border-secondary" id="diag-ip" placeholder="Ej: 192.168...">
+                                <input type="text" class="form-control bg-black text-white border-secondary"
+                                    id="diag-ip" placeholder="Ej: 192.168...">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small text-info fw-bold">SN Digital</label>
-                                <input type="text" class="form-control bg-black text-info border-info" id="diag-sn-digital" placeholder="Escanear SN Digital...">
+                                <input type="text" class="form-control bg-black text-info border-info"
+                                    id="diag-sn-digital" placeholder="Escanear SN Digital...">
                             </div>
                         </div>
 
                         <h6 class="text-white border-bottom border-secondary pb-1 mt-4 mb-3">Detalles Técnicos</h6>
-                        
+
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6">
+                            <div class="col-12">
                                 <label class="form-label small text-white-50">Falla Detectada *</label>
-                                <select class="form-select bg-dark text-white border-secondary" id="diag-falla" required>
+                                <select class="form-select bg-dark text-white border-secondary" id="diag-falla"
+                                    required>
                                     <option value="">Seleccionar...</option>
                                     <option value="Frecuencia">Frecuencia / Hashrate Bajo</option>
                                     <option value="Fuente">Fuente (PSU)</option>
@@ -277,27 +732,12 @@
                                     <option value="Desconocido">Desconocido</option>
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small text-white-50">Solución Aplicada *</label>
-                                <select class="form-select bg-dark text-white border-secondary" id="diag-solucion" required onchange="checkSolucionDiag(this.value)">
-                                    <option value="">Seleccionar...</option>
-                                    <option value="Solucionado" class="text-success">✓ SOLUCIONADO - Problema resuelto</option>
-                                    <option value="Reinicio interfaz">Reinicio desde la interfaz</option>
-                                    <option value="Restauración y FW">Restauración y Firmware</option>
-                                    <option value="Reinicio manual">Reinicio físico (Manual)</option>
-                                    <option value="Crimpeo Ethernet">Crimpeo Cable Ethernet</option>
-                                    <option value="Firmware Update">Actualización Firmware</option>
-                                    <option value="Reinicio PDU">Reinicio PDU</option>
-                                    <option value="Conciliación">Conciliación (Cambio Pieza)</option>
-                                    <option value="RMA" class="text-warning">→ RMA (Derivar a Laboratorio)</option>
-                                    <option value="Restauración">Solo Restauración</option>
-                                </select>
-                            </div>
                         </div>
 
                         <div class="mb-4">
                             <label class="form-label small text-white-50">Observación / Notas</label>
-                            <textarea class="form-control bg-black text-white border-secondary" id="diag-observacion" rows="2" placeholder="Detalles extra..."></textarea>
+                            <textarea class="form-control bg-black text-white border-secondary" id="diag-observacion"
+                                rows="2" placeholder="Detalles extra..."></textarea>
                         </div>
 
                         <div class="d-grid">
@@ -310,45 +750,64 @@
             </div>
         </div>
     </div>
-    
+
     <div class="modal fade" id="modalMiner" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content bg-dark border-secondary shadow-lg">
                 <div class="modal-header border-secondary bg-black py-2">
-                    <h5 class="modal-title fs-6"><i class="bi bi-hdd-rack me-2 text-warning"></i> Posición: <span id="modal-titulo" class="text-warning fw-bold">...</span></h5>
+                    <h5 class="modal-title fs-6"><i class="bi bi-hdd-rack me-2 text-warning"></i> Posición: <span
+                            id="modal-titulo" class="text-warning fw-bold">...</span></h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     <form id="formMiner" action="/api/guardar" method="POST">
                         <input type="hidden" name="wh" id="input-wh"><input type="hidden" name="rack" id="input-rack">
-                        <input type="hidden" name="fila" id="input-fila"><input type="hidden" name="columna" id="input-columna">
+                        <input type="hidden" name="fila" id="input-fila"><input type="hidden" name="columna"
+                            id="input-columna">
 
                         <div class="row g-2 mb-3">
-                            <div class="col-md-3"><label class="small text-secondary">Modelo</label><input type="text" class="form-control form-control-sm" name="modelo" id="input-modelo"></div>
-                            <div class="col-md-2"><label class="small text-secondary">TH/s *</label><input type="number" step="0.1" class="form-control form-control-sm" name="ths" id="input-ths"></div>
-                            <div class="col-md-7"><label class="small text-secondary">MAC Address *</label><input type="text" class="form-control form-control-sm" name="mac" id="input-mac"></div>
+                            <div class="col-md-3"><label class="small text-secondary">Modelo</label><input type="text"
+                                    class="form-control form-control-sm" name="modelo" id="input-modelo"></div>
+                            <div class="col-md-2"><label class="small text-secondary">TH/s *</label><input type="number"
+                                    step="0.1" class="form-control form-control-sm" name="ths" id="input-ths"></div>
+                            <div class="col-md-7"><label class="small text-secondary">MAC Address *</label><input
+                                    type="text" class="form-control form-control-sm" name="mac" id="input-mac"></div>
                         </div>
 
-                        <div class="row g-2 mb-3 p-2 rounded" style="background: rgba(255, 193, 7, 0.05); border: 1px dashed #444;">
-                            <div class="col-md-6"><label class="small text-warning fw-bold">SN FÍSICO *</label><input type="text" class="form-control form-control-sm border-warning text-warning" name="sn_fisica" id="input-sn"></div>
-                            <div class="col-md-6"><label class="small text-info fw-bold">SN DIGITAL</label><input type="text" class="form-control form-control-sm border-info text-info" name="sn_digital" id="input-sn-digital"></div>
+                        <div class="row g-2 mb-3 p-2 rounded"
+                            style="background: rgba(255, 193, 7, 0.05); border: 1px dashed #444;">
+                            <div class="col-md-6"><label class="small text-warning fw-bold">SN FÍSICO *</label><input
+                                    type="text" class="form-control form-control-sm border-warning text-warning"
+                                    name="sn_fisica" id="input-sn"></div>
+                            <div class="col-md-6"><label class="small text-info fw-bold">SN DIGITAL</label><input
+                                    type="text" class="form-control form-control-sm border-info text-info"
+                                    name="sn_digital" id="input-sn-digital"></div>
                         </div>
 
-                        <h6 class="text-white border-bottom border-secondary pb-1 mb-3 small fw-bold mt-4">COMPONENTES INTERNOS</h6>
+                        <h6 class="text-white border-bottom border-secondary pb-1 mb-3 small fw-bold mt-4">COMPONENTES
+                            INTERNOS</h6>
                         <div class="row g-2 mb-3">
-                            <div class="col-md-4"><label class="small text-secondary">PSU Model</label><input type="text" class="form-control form-control-sm" name="psu_model" id="input-psu-model"></div>
-                            <div class="col-md-4"><label class="small text-secondary">PSU SN</label><input type="text" class="form-control form-control-sm" name="psu_sn" id="input-psu"></div>
-                            <div class="col-md-4"><label class="small text-secondary">Control Board SN</label><input type="text" class="form-control form-control-sm" name="cb_sn" id="input-cb"></div>
-                            <div class="col-md-4"><label class="small text-secondary">HB1 SN (CH0)</label><input type="text" class="form-control form-control-sm" name="hb1_sn" id="input-hb1"></div>
-                            <div class="col-md-4"><label class="small text-secondary">HB2 SN (CH1)</label><input type="text" class="form-control form-control-sm" name="hb2_sn" id="input-hb2"></div>
-                            <div class="col-md-4"><label class="small text-secondary">HB3 SN (CH2)</label><input type="text" class="form-control form-control-sm" name="hb3_sn" id="input-hb3"></div>
+                            <div class="col-md-4"><label class="small text-secondary">PSU Model</label><input
+                                    type="text" class="form-control form-control-sm" name="psu_model"
+                                    id="input-psu-model"></div>
+                            <div class="col-md-4"><label class="small text-secondary">PSU SN</label><input type="text"
+                                    class="form-control form-control-sm" name="psu_sn" id="input-psu"></div>
+                            <div class="col-md-4"><label class="small text-secondary">Control Board SN</label><input
+                                    type="text" class="form-control form-control-sm" name="cb_sn" id="input-cb"></div>
+                            <div class="col-md-4"><label class="small text-secondary">HB1 SN (CH0)</label><input
+                                    type="text" class="form-control form-control-sm" name="hb1_sn" id="input-hb1"></div>
+                            <div class="col-md-4"><label class="small text-secondary">HB2 SN (CH1)</label><input
+                                    type="text" class="form-control form-control-sm" name="hb2_sn" id="input-hb2"></div>
+                            <div class="col-md-4"><label class="small text-secondary">HB3 SN (CH2)</label><input
+                                    type="text" class="form-control form-control-sm" name="hb3_sn" id="input-hb3"></div>
                         </div>
 
                         <div class="mt-4 border-top border-secondary pt-3">
                             <label class="small text-danger fw-bold mb-2">DIAGNÓSTICO (para RMA)</label>
                             <div class="row g-2">
                                 <div class="col-md-4">
-                                    <select class="form-select form-select-sm bg-dark text-white" name="diagnostico_detalle" id="input-falla">
+                                    <select class="form-select form-select-sm bg-dark text-white"
+                                        name="diagnostico_detalle" id="input-falla">
                                         <option value="">-- Seleccionar Falla * --</option>
                                         <option value="HASHBOARD">HASHBOARD</option>
                                         <option value="PSU">PSU</option>
@@ -358,21 +817,44 @@
                                     </select>
                                 </div>
                                 <div class="col-md-4">
-                                    <input type="text" 
-                                           class="form-control form-control-sm bg-dark text-white border-warning" 
-                                           name="ip_rma" 
-                                           id="input-ip-rma"
-                                           placeholder="IP del puerto actual *">
-                                    <small class="text-white" style="font-size: 0.7rem;">IP del switch donde está conectada</small>
+                                    <input type="text"
+                                        class="form-control form-control-sm bg-dark text-white border-warning"
+                                        name="ip_rma" id="input-ip-rma" placeholder="IP del puerto actual *">
+                                    <small class="text-white" style="font-size: 0.7rem;">IP del switch donde está
+                                        conectada</small>
                                 </div>
                                 <div class="col-md-4">
-                                    <textarea class="form-control form-control-sm bg-dark text-white" name="log_detalle" rows="1" placeholder="Pegar log *..." id="input-log"></textarea>
+                                    <textarea class="form-control form-control-sm bg-dark text-white" name="log_detalle"
+                                        rows="1" placeholder="Pegar log *..." id="input-log"></textarea>
+                                </div>
+                            </div>
+                            <div class="row g-2 mt-2">
+                                <div class="col-12">
+                                    <label class="small text-warning fw-bold">Archivo LOG (.txt) *</label>
+                                    <input type="file"
+                                           class="form-control form-control-sm bg-dark text-white border-warning"
+                                           name="log_file"
+                                           id="input-log-file"
+                                           accept=".txt,text/plain">
+                                    <small class="text-white" style="font-size: 0.7rem;">Se renombrará como SN digital (ej: YNAHG4UBEJBAH0AES.txt) y se guardará en Drive.</small>
+                                </div>
+                                <div class="col-12 mt-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="input-no-enciende" name="no_enciende" value="1">
+                                        <label class="form-check-label text-warning" for="input-no-enciende">
+                                            No enciende (no requiere alzar log)
+                                        </label>
+                                    </div>
+                                    <small id="no-enciende-status" class="d-block mt-1 text-white-50" style="font-size: 0.75rem;">
+                                        Estado: Log .txt requerido.
+                                    </small>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="modal-footer border-top border-secondary mt-3 px-0 pb-0 d-flex justify-content-between">
-                            
+                        <div
+                            class="modal-footer border-top border-secondary mt-3 px-0 pb-0 d-flex justify-content-between">
+
                             <div>
                                 <button type="submit" class="btn btn-warning btn-sm fw-bold text-dark px-4">
                                     <i class="bi bi-save me-1"></i> GUARDAR
@@ -380,51 +862,984 @@
                             </div>
 
                             <div id="btns-normal">
-                                <button type="button" onclick="validarYEnviarRMA()" class="btn btn-danger btn-sm fw-bold px-3">
+                                <button type="button" onclick="validarYEnviarRMA()"
+                                    class="btn btn-danger btn-sm fw-bold px-3">
                                     <i class="bi bi-file-earmark-spreadsheet me-1"></i> ENVIAR A RMA
                                 </button>
                             </div>
 
                         </div>
-                        </form>
-                        
-                        <!-- BOTONES DE RMA (fuera del form para que no se oculten) -->
-                        <div id="btns-rma" style="display: none;">
-                            <div class="alert alert-warning mb-3">
-                                <i class="bi bi-info-circle me-2"></i>
-                                <strong>Equipo con RMA registrado.</strong> Selecciona una acción:
-                            </div>
-                            <div class="d-grid gap-2">
-                                <button type="button" 
-                                        class="btn btn-warning btn-lg" 
-                                        onclick="solicitarTrasladoRMA()">
-                                    <i class="bi bi-arrow-left-right me-2"></i>
-                                    Solicitar Traslado al Laboratorio
-                                </button>
-                                
-                                <button type="button" 
-                                        class="btn btn-success" 
-                                        onclick="conciliarMiner()">
-                                    <i class="bi bi-check2-circle me-2"></i>
-                                    Conciliación de Piezas
-                                </button>
-                                
-                                <button type="button" 
-                                        class="btn btn-outline-danger" 
-                                        onclick="cancelarRMA()">
-                                    <i class="bi bi-x-circle me-2"></i>
-                                    Cancelar RMA (Error de Registro)
-                                </button>
-                            </div>
+                    </form>
+
+                    <!-- BOTONES DE RMA (fuera del form para que no se oculten) -->
+                    <div id="btns-rma" style="display: none;">
+                        <div class="alert alert-warning mb-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Equipo con RMA registrado.</strong> Selecciona una acción:
                         </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-warning btn-lg" onclick="solicitarTrasladoRMA()">
+                                <i class="bi bi-arrow-left-right me-2"></i>
+                                Solicitar Traslado al Laboratorio
+                            </button>
+
+                            <button type="button" class="btn btn-success" onclick="conciliarMiner()">
+                                <i class="bi bi-check2-circle me-2"></i>
+                                Conciliación de Piezas
+                            </button>
+
+                            <button type="button" class="btn btn-outline-danger" onclick="cancelarRMA()">
+                                <i class="bi bi-x-circle me-2"></i>
+                                Cancelar RMA (Error de Registro)
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/api_service.js') }}?v=3"></script>
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=3"></script>
-    <style>.hover-light:hover { background-color: rgba(255,255,255,0.1) !important; color: #fff !important; } .hover-white:hover { color: #fff !important; }</style>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        onerror="alert('Error crítico: No se pudo cargar Bootstrap. Las modales no funcionarán. Verifique su conexión o bloqueos de red.');"></script>
+    <script src="{{ url_for('main.serve_asset', asset_name='rma_actions.js') }}"></script>
+
+    <!-- Fallback inline para conciliación si rma_actions.js/htmx son bloqueados -->
+    <script>
+    if (typeof iniciarConciliacion === 'undefined') {
+        console.warn('Fallback conciliación activo: rma_actions.js no se pudo cargar.');
+
+        async function iniciarConciliacion(wh, rack, fila, columna) {
+            const HYDRO_WH_ID = 100;
+            const data = await (window.ApiService ? ApiService.getMiner(wh, rack, fila, columna) : null);
+            const minerId = data && data.id;
+            if (!minerId) {
+                alert('No se pudo obtener datos del equipo para conciliar.');
+                return;
+            }
+
+            const isHydro = parseInt(wh) === HYDRO_WH_ID;
+            let tipo = 'WH';
+            if (isHydro) {
+                tipo = 'LAB';
+            } else {
+                const op = prompt('Tipo de conciliación: escribir WH o LAB', 'WH');
+                if (!op) return;
+                tipo = op.toUpperCase() === 'LAB' ? 'LAB' : 'WH';
+            }
+
+            const pieza = prompt('Pieza a conciliar (PSU/CB/HB/FAN/etc.)', (data.diagnostico || 'PSU'));
+            if (!pieza) return;
+            const comentario = prompt('Comentario/diagnóstico', data.log || '');
+            if (comentario === null) return;
+
+            try {
+                const res = await fetch('/api/conciliacion/crear', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tipo, miner_id: minerId, pieza, comentario })
+                });
+                const result = await res.json();
+                if (result.status === 'ok') {
+                    alert('✅ Conciliación registrada');
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + result.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error de conexión al crear conciliación');
+            }
+        }
+
+        // Botón del modal usa conciliarMiner()
+        async function conciliarMiner() {
+            const wh = document.getElementById('input-wh').value;
+            const rack = document.getElementById('input-rack').value;
+            const fila = document.getElementById('input-fila').value;
+            const columna = document.getElementById('input-columna').value;
+            return iniciarConciliacion(wh, rack, fila, columna);
+        }
+    }
+    </script>
+
+    <!-- TOAST CONTAINER FOR NOTIFICATIONS -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050" id="notificationToastContainer">
+    </div>
+
+    <!-- NOTIFICATION AUDIO -->
+    <audio id="notificationSound" preload="auto">
+        <source
+            src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeQAAAAAATmQAAAAAAAeAAAAAAAAAAAAAA//oeQAAAAAATmQAAAAAAAeAAAAAAAAAAAAAA//oeQAAAAAATmQAAAAAAAeAAAAAAAAAAAAAA//oeQAAAAAATmQAAAAAAAeAAAAAAAAAAAAAA"
+            type="audio/mpeg">
+    </audio>
+
+    <script>
+        // ============================================
+        // SISTEMA DE NOTIFICACIONES (POLLING)
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const userId = "{{ session.get('user_id') }}";
+            if (!userId || userId === 'None') return;
+
+            const toastContainer = document.getElementById('notificationToastContainer');
+            const audio = document.getElementById('notificationSound');
+
+            function showToast(title, message, type, link) {
+                let bgClass = 'bg-primary';
+                if (type === 'success') bgClass = 'bg-success';
+                if (type === 'warning') bgClass = 'bg-warning';
+                if (type === 'error') bgClass = 'bg-danger';
+
+                const toastId = 'toast-' + Date.now();
+
+                const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <strong>${title}</strong><br>
+                            ${message}
+                            ${link ? `<div class="mt-2"><a href="${link}" class="btn btn-sm btn-light text-dark">Ver Detalles</a></div>` : ''}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+
+                toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement, { delay: 10000 });
+                toast.show();
+
+                // Audio attempt
+                try { audio.play().catch(e => { }); } catch (e) { }
+
+                toastElement.addEventListener('hidden.bs.toast', function () {
+                    toastElement.remove();
+                });
+            }
+
+            async function checkNotifications() {
+                try {
+                    const resp = await fetch('/api/notifications/check', { headers: { 'Accept': 'application/json' } });
+                    if (!resp.ok) return; // Si el proxy devuelve 403/503, salimos silenciosamente
+                    const ct = resp.headers.get('content-type') || '';
+                    if (!ct.includes('application/json')) return; // Evita parsear HTML de un proxy
+                    const data = await resp.json();
+                    for (const notif of data) {
+                        showToast(notif.type.toUpperCase(), notif.message, notif.type, notif.link);
+                        try { await fetch(`/api/notifications/mark_read/${notif.id}`, { method: 'POST' }); } catch (_) {}
+                    }
+                } catch (_) {
+                    // Silenciar errores de red/proxy
+                }
+            }
+
+            setInterval(checkNotifications, 15000); // 15s poll
+            setTimeout(checkNotifications, 2000);   // Initial check
+        });
+    </script>
+    <script>
+        // --- INLINE API SERVICE ---
+        const ApiService = {
+            async getMiner(wh, rack, fila, columna) {
+                try {
+                    const response = await fetch(`/api/get_miner/${wh}/${rack}/${fila}/${columna}`);
+                    if (!response.ok) throw new Error('Error de red o servidor');
+                    return await response.json();
+                } catch (error) {
+                    console.error("Error en ApiService:", error);
+                    return null;
+                }
+            }
+        };
+
+        // --- INLINE DASHBOARD JS ---
+        // (Pasted content of dashboard.js to ensure execution)
+        const HYDRO_WH_ID = 100;
+
+        function generarUrlMiner(r) {
+            if (r.wh == HYDRO_WH_ID) {
+                const container = Math.ceil(r.rack / 2);
+                return `/dashboard/hydro/container/${container}?rack=${r.rack}&target=${r.fila}-${r.columna}`;
+            } else {
+                return `/dashboard/${r.wh}/${r.rack}?target=${r.fila}-${r.columna}`;
+            }
+        }
+
+        async function handleSearch(event) {
+            if (event.key === 'Enter') {
+                const query = event.target.value.trim();
+                if (!query) return;
+                event.target.style.opacity = "0.5";
+                try {
+                    const response = await fetch(`/api/buscar?q=${query}`);
+                    if (response.redirected || !response.ok) {
+                        if (response.redirected && response.url.includes('/login')) {
+                            window.location.href = '/login';
+                            return;
+                        }
+                        throw new Error('Error en la respuesta del servidor');
+                    }
+                    const data = await response.json();
+                    if (data.found) {
+                        if (data.total === 1) {
+                            const r = data.resultados[0];
+                            window.location.href = generarUrlMiner(r);
+                        } else {
+                            mostrarTablaResultados(data.resultados);
+                        }
+                    } else {
+                        alert("🚫 Equipo no encontrado en la base de datos.");
+                        event.target.focus();
+                    }
+                } catch (error) {
+                    console.error(error);
+                    if (error.name === 'SyntaxError') {
+                        alert("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.");
+                        window.location.href = '/login';
+                    } else {
+                        alert("Error de conexión con el servidor.");
+                    }
+                } finally {
+                    event.target.style.opacity = "1";
+                }
+            }
+        }
+
+        function mostrarTablaResultados(resultados) {
+            const tbody = document.getElementById('tabla-resultados-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            resultados.forEach(r => {
+                const colorEstado = (r.estado === 'en_laboratorio' || r.estado === 'en_reparacion') ? 'text-danger fw-bold' : 'text-success';
+                const textoEstado = r.estado.replace('_', ' ').toUpperCase();
+                const badgeTipo = r.tipo === 'HYDRO'
+                    ? '<span class="badge bg-primary bg-opacity-25 text-primary border border-primary">HYDRO</span>'
+                    : '<span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary">AIRE</span>';
+                const row = `<tr><td class="ps-4"><div class="fw-bold text-white">${r.sn}</div><div class="small text-white">${r.modelo || 'Desconocido'}</div></td><td>${badgeTipo}</td><td>${r.wh == HYDRO_WH_ID ? `<span class="text-info">C${Math.ceil(r.rack / 2)}</span> <i class="bi bi-chevron-right small text-white"></i> Rack ${r.rack % 2 === 1 ? 'A' : 'B'}` : `<span class="text-warning">WH ${r.wh}</span> <i class="bi bi-chevron-right small text-white"></i> Rack ${r.rack}`}</td><td class="${colorEstado} small">${textoEstado}</td><td class="text-end pe-4"><a href="${generarUrlMiner(r)}" class="btn btn-sm btn-outline-light">Ir <i class="bi bi-arrow-right"></i></a></td></tr>`;
+                tbody.innerHTML += row;
+            });
+            const myModal = new bootstrap.Modal(document.getElementById('modalResultados'));
+            myModal.show();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const target = urlParams.get('target');
+            if (target) {
+                const [f, c] = target.split('-');
+                const tarjeta = document.getElementById(`cell-${f}-${c}`);
+                if (tarjeta) {
+                    tarjeta.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                    tarjeta.classList.add('shining-gold');
+                    tarjeta.addEventListener('click', () => { tarjeta.classList.remove('shining-gold'); }, { once: true });
+                }
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
+
+        let currentMinerData = null;
+        let currentUbicacion = { wh: null, rack: null, fila: null, columna: null };
+
+        async function abrirModal(wh, rack, fila, columna) {
+            const data = await ApiService.getMiner(wh, rack, fila, columna);
+            if (data) {
+                currentMinerData = data;
+                currentUbicacion = { wh, rack, fila, columna };
+                const enLab = data.proceso_estado === 'en_laboratorio' || data.proceso_estado === 'en_reparacion';
+                const enRMA = data.proceso_estado === 'en_rma';  // Ya tiene RMA enviado
+                const estadoBloqueado = data.proceso_estado === 'pendiente_traslado' || data.proceso_estado === 'Conciliando';
+                const tieneDiagnostico = !!data.diagnostico_detalle && !enRMA;  // Solo diagnóstico, sin RMA
+
+                // Si está en lab, en RMA o bloqueado -> directo al modal
+                if (enLab || enRMA || estadoBloqueado) {
+                    abrirModalMinerDirecto(data, wh, rack, fila, columna);
+                } else if (tieneDiagnostico) {
+                    // Solo diagnóstico, mostrar opciones Re-diagnosticar o Formulario RMA
+                    let ubicacionTxt;
+                    if (wh == HYDRO_WH_ID) {
+                        const container = Math.ceil(rack / 2);
+                        const rackLetra = rack % 2 === 1 ? 'A' : 'B';
+                        ubicacionTxt = `C${container}-${rackLetra} (${fila}-${columna})`;
+                    } else {
+                        ubicacionTxt = `WH ${wh} - Rack ${rack} (${fila}-${columna})`;
+                    }
+                    document.getElementById('diagnosticado-title').innerText = ubicacionTxt;
+                    document.getElementById('diagnosticado-falla').innerText = `Falla: ${data.diagnostico_detalle}`;
+                    const modalDiagnosticado = new bootstrap.Modal(document.getElementById('modalDiagnosticado'));
+                    modalDiagnosticado.show();
+                } else {
+                    let ubicacionTxt;
+                    if (wh == HYDRO_WH_ID) {
+                        const container = Math.ceil(rack / 2);
+                        const rackLetra = rack % 2 === 1 ? 'A' : 'B';
+                        ubicacionTxt = `C${container}-${rackLetra} (${fila}-${columna})`;
+                    } else {
+                        ubicacionTxt = `WH ${wh} - Rack ${rack} (${fila}-${columna})`;
+                    }
+                    document.getElementById('decision-title').innerText = ubicacionTxt;
+                    const modalDecision = new bootstrap.Modal(document.getElementById('modalDecision'));
+                    modalDecision.show();
+                }
+            } else {
+                abrirModalMinerDirecto(null, wh, rack, fila, columna);
+            }
+        }
+
+        function abrirModalMinerDirecto(data, wh, rack, fila, columna) {
+            const modalDecisionEl = document.getElementById('modalDecision');
+            const modalDecision = bootstrap.Modal.getInstance(modalDecisionEl);
+            if (modalDecision) modalDecision.hide();
+
+            const titulo = document.getElementById('modal-titulo');
+            const form = document.getElementById('formMiner');
+            const headerModal = document.querySelector('#modalMiner .modal-header');
+            const btnsNormal = document.getElementById('btns-normal');
+            const btnsRMA = document.getElementById('btns-rma');
+
+            titulo.innerText = `${fila}-${columna}`;
+            form.reset();
+            headerModal.classList.remove('bg-danger');
+            headerModal.classList.add('bg-black');
+            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+
+            document.getElementById('input-wh').value = wh;
+            document.getElementById('input-rack').value = rack;
+            document.getElementById('input-fila').value = fila;
+            document.getElementById('input-columna').value = columna;
+
+            if (data) {
+                document.getElementById('input-modelo').value = data.modelo || '';
+                document.getElementById('input-ths').value = data.ths || '';
+                document.getElementById('input-mac').value = data.mac_address || '';
+                document.getElementById('input-sn').value = data.sn_fisica || '';
+                document.getElementById('input-sn-digital').value = data.sn_digital || '';
+                document.getElementById('input-psu-model').value = data.psu_model || '';
+                document.getElementById('input-psu').value = data.psu_sn || '';
+                document.getElementById('input-cb').value = data.cb_sn || '';
+                document.getElementById('input-hb1').value = data.hb1_sn || '';
+                document.getElementById('input-hb2').value = data.hb2_sn || '';
+                document.getElementById('input-hb3').value = data.hb3_sn || '';
+                if (data.diagnostico) document.getElementById('input-falla').value = data.diagnostico;
+                if (data.log) document.getElementById('input-log').value = data.log;
+
+                const enRMA = data.proceso_estado === 'en_rma';  // RMA enviado, pendiente de acción
+                const enLab = data.proceso_estado === 'en_laboratorio' || data.proceso_estado === 'en_reparacion';
+                const tieneRMA = enRMA || enLab;  // Cualquier estado de RMA activo
+                const estadoBloqueado = (data.proceso_estado === 'pendiente_traslado' || data.proceso_estado === 'Conciliando');
+
+                if (estadoBloqueado) {
+                    headerModal.classList.remove('bg-black');
+                    headerModal.classList.add('bg-danger');
+                    if (data.proceso_estado === 'pendiente_traslado') titulo.innerText += " (EN TRASLADO)";
+                    else titulo.innerText += " (EN CONCILIACIÓN)";
+                    btnsNormal.style.display = 'none';
+                    btnsRMA.style.display = 'none';
+                    form.style.display = 'none';
+                    renderLockedInfo(data, form);
+                } else if (tieneRMA) {
+                    headerModal.classList.remove('bg-black');
+                    headerModal.classList.add('bg-danger');
+                    titulo.innerText += " (CON RMA)";
+                    btnsNormal.style.display = 'none';
+                    btnsRMA.style.display = 'block';
+                    form.style.display = 'none';  // Ocultar formulario, solo mostrar botones de acción
+                    const btnCancelarRMA = document.querySelector('#btns-rma button[onclick="cancelarRMA()"]');
+                    const btnSolicitarTraslado = document.querySelector('#btns-rma button[onclick="solicitarTrasladoRMA()"]');
+                    if (btnCancelarRMA && data.traslado_pendiente) {
+                        btnCancelarRMA.style.display = 'none';
+                        if (btnSolicitarTraslado) btnSolicitarTraslado.style.display = 'none';
+                    } else {
+                        if (btnCancelarRMA) btnCancelarRMA.style.display = 'block';
+                        if (btnSolicitarTraslado) btnSolicitarTraslado.style.display = 'block';
+                    }
+                    renderRMAInfo(data, form);
+                } else {
+                    form.style.display = 'block';
+                    btnsNormal.style.display = 'block';
+                    btnsRMA.style.display = 'none';
+                    const container = document.getElementById('rma-info-container');
+                    if (container) container.innerHTML = '';
+                }
+            } else {
+                titulo.innerText = `${fila}-${columna} (Nuevo)`;
+                btnsNormal.style.display = 'block';
+                btnsRMA.style.display = 'none';
+            }
+            const myModal = new bootstrap.Modal(document.getElementById('modalMiner'));
+            myModal.show();
+        }
+
+        function renderRMAInfo(data, form) {
+            let rmaInfoContainer = document.getElementById('rma-info-container');
+            if (!rmaInfoContainer) {
+                rmaInfoContainer = document.createElement('div');
+                rmaInfoContainer.id = 'rma-info-container';
+                form.parentElement.insertBefore(rmaInfoContainer, form);
+            }
+            rmaInfoContainer.innerHTML = '';
+            const infoMinero = document.createElement('div');
+            infoMinero.className = 'mb-3 p-3 bg-dark rounded border border-secondary';
+            infoMinero.innerHTML = `<h6 class="text-white mb-2"><i class="bi bi-cpu me-2"></i>Información del Equipo</h6><div class="row text-white small"><div class="col-6"><strong>SN:</strong> ${data.sn_fisica || 'N/A'}</div><div class="col-6"><strong>Modelo:</strong> ${data.modelo || 'N/A'}</div><div class="col-6"><strong>TH/s:</strong> ${data.ths || 'N/A'}</div><div class="col-6"><strong>IP:</strong> ${data.ip_address || 'N/A'}</div></div>`;
+            rmaInfoContainer.appendChild(infoMinero);
+            if (data.diagnostico_detalle) {
+                const alertRMA = document.createElement('div');
+                alertRMA.className = 'alert alert-danger mb-3';
+                alertRMA.innerHTML = `<strong><i class="bi bi-exclamation-triangle me-2"></i>RMA Registrado:</strong><br>${data.diagnostico_detalle}`;
+                rmaInfoContainer.appendChild(alertRMA);
+            }
+        }
+
+        function renderLockedInfo(data, form) {
+            let rmaInfoContainer = document.getElementById('rma-info-container');
+            if (!rmaInfoContainer) {
+                rmaInfoContainer = document.createElement('div');
+                rmaInfoContainer.id = 'rma-info-container';
+                form.parentElement.insertBefore(rmaInfoContainer, form);
+            }
+            rmaInfoContainer.innerHTML = '';
+            const infoMinero = document.createElement('div');
+            infoMinero.className = 'mb-3 p-3 bg-dark rounded border border-secondary';
+            infoMinero.innerHTML = `<h6 class="text-white mb-2"><i class="bi bi-cpu me-2"></i>Información del Equipo</h6><div class="row text-white small"><div class="col-6"><strong>SN:</strong> ${data.sn_fisica || 'N/A'}</div><div class="col-6"><strong>Modelo:</strong> ${data.modelo || 'N/A'}</div><div class="col-6"><strong>TH/s:</strong> ${data.ths || 'N/A'}</div><div class="col-6"><strong>IP:</strong> ${data.ip_address || 'N/A'}</div></div>`;
+            rmaInfoContainer.appendChild(infoMinero);
+            const alertEstado = document.createElement('div');
+            if (data.proceso_estado === 'pendiente_traslado') {
+                alertEstado.className = 'alert alert-warning mb-3';
+                alertEstado.innerHTML = `<strong><i class="bi bi-hourglass-split me-2"></i>Traslado Pendiente</strong><br>Este equipo tiene una solicitud de traslado en proceso.<br><small class="text-white">Espera la aprobación del coordinador para continuar.</small>`;
+            } else {
+                alertEstado.className = 'alert alert-info mb-3';
+                alertEstado.innerHTML = `<strong><i class="bi bi-tools me-2"></i>En Conciliación</strong><br>Este equipo está en proceso de conciliación de piezas.<br><small class="text-white">Espera a que finalice el proceso para tomar otras acciones.</small>`;
+            }
+            rmaInfoContainer.appendChild(alertEstado);
+            if (data.diagnostico_detalle) {
+                const alertRMA = document.createElement('div');
+                alertRMA.className = 'alert alert-danger mb-0';
+                alertRMA.innerHTML = `<strong><i class="bi bi-exclamation-triangle me-2"></i>RMA Registrado:</strong><br>${data.diagnostico_detalle}`;
+                rmaInfoContainer.appendChild(alertRMA);
+            }
+        }
+
+        function abrirRMA() {
+            if (currentMinerData) {
+                abrirModalMinerDirecto(currentMinerData, currentUbicacion.wh, currentUbicacion.rack, currentUbicacion.fila, currentUbicacion.columna);
+            }
+        }
+
+        function reDiagnosticar() {
+            const modalDiagnosticado = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticado'));
+            if (modalDiagnosticado) modalDiagnosticado.hide();
+            abrirFormularioDiagnostico();
+        }
+
+        function abrirFormularioRMA() {
+            const modalDiagnosticado = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticado'));
+            if (modalDiagnosticado) modalDiagnosticado.hide();
+            if (currentMinerData) {
+                abrirModalMinerDirecto(currentMinerData, currentUbicacion.wh, currentUbicacion.rack, currentUbicacion.fila, currentUbicacion.columna);
+            }
+        }
+
+        function abrirFormularioDiagnostico() {
+            const modalDecision = bootstrap.Modal.getInstance(document.getElementById('modalDecision'));
+            if (modalDecision) modalDecision.hide();
+            document.getElementById('diag-wh').value = currentUbicacion.wh;
+            document.getElementById('diag-rack').value = currentUbicacion.rack;
+            document.getElementById('diag-fila').value = currentUbicacion.fila;
+            document.getElementById('diag-columna').value = currentUbicacion.columna;
+            document.getElementById('diag-miner-id').value = currentMinerData.id || '';
+            document.getElementById('diag-ubicacion-txt').innerText = `WH${currentUbicacion.wh} R${currentUbicacion.rack} (${currentUbicacion.fila}-${currentUbicacion.columna})`;
+            document.getElementById('diag-sn-txt').innerText = currentMinerData.sn_fisica || 'No registrado';
+            document.getElementById('diag-ip').value = currentMinerData.ip_address || '';
+            document.getElementById('diag-sn-digital').value = currentMinerData.sn_digital || '';
+            document.getElementById('diag-observacion').value = '';
+            const selectFalla = document.getElementById('diag-falla');
+            selectFalla.innerHTML = '<option value="">Seleccionar...</option>';
+            let opciones = [];
+            if (parseInt(currentUbicacion.wh) === 100) {
+                opciones = ["Fuente", "CB", "Manguera", "Hashboard", "MAC cambiada", "Válvula", "Cable de red", "Switch", "Desconocido"];
+            } else {
+                opciones = ["Frecuencia", "Fuente (PSU)", "Control Board", "Fan", "Hashboard", "Firmware", "PDU", "Red", "Switch", "Desconocido"];
+            }
+            opciones.forEach(op => {
+                const option = document.createElement('option');
+                option.value = op;
+                option.textContent = op;
+                selectFalla.appendChild(option);
+            });
+            const modalDiag = new bootstrap.Modal(document.getElementById('modalDiagnostico'));
+            modalDiag.show();
+        }
+
+        async function guardarDiagnostico() {
+            const falla = document.getElementById('diag-falla').value;
+            if (!falla) { alert("⚠️ Debes seleccionar la falla detectada."); return; }
+            const marcarSolucionadoInicial = false; // Siempre modo diagnóstico en esta etapa
+
+            const btn = document.querySelector('#modalDiagnostico button[onclick="guardarDiagnostico()"]');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+            }
+
+            const payload = {
+                wh: document.getElementById('diag-wh').value,
+                rack: document.getElementById('diag-rack').value,
+                fila: document.getElementById('diag-fila').value,
+                columna: document.getElementById('diag-columna').value,
+                miner_id: document.getElementById('diag-miner-id').value,
+                ip: document.getElementById('diag-ip').value,
+                sn_digital: document.getElementById('diag-sn-digital').value,
+                sn_fisica: currentMinerData.sn_fisica,
+                falla: falla,
+                solucion: '',
+                observacion: document.getElementById('diag-observacion').value,
+                marcar_solucionado: marcarSolucionadoInicial
+            };
+            try {
+                const res = await fetch('/api/diagnostico/guardar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalDiagnostico'))?.hide();
+                    if (marcarSolucionadoInicial) {
+                        alert("✅ Problema marcado como SOLUCIONADO. El equipo vuelve a estado operativo.");
+                    } else {
+                        alert("✅ Diagnóstico guardado. El equipo queda en modo diagnóstico. Reabre para marcar solucionado o enviar a RMA.");
+                    }
+                    location.reload();
+                } else {
+                    alert("Error: " + json.message);
+                }
+            } catch (e) {
+                alert("Error de conexión");
+                console.error(e);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-save me-2"></i> GUARDAR HISTORIAL';
+                }
+            }
+        }
+
+        function abrirModalSolucionado() {
+            const modalDiag = bootstrap.Modal.getInstance(document.getElementById('modalDiagnosticado'));
+            if (modalDiag) modalDiag.hide();
+            const modalSol = new bootstrap.Modal(document.getElementById('modalSolucionado'));
+            modalSol.show();
+        }
+
+        async function marcarSolucionado() {
+            if (!currentMinerData) return;
+
+            const confirmBtn = document.getElementById('btn-confirm-solucionado');
+            const setLoadingState = () => {
+                if (!confirmBtn) return;
+                if (!confirmBtn.dataset.defaultText) {
+                    confirmBtn.dataset.defaultText = confirmBtn.innerHTML;
+                }
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
+            };
+            const markDoneState = () => {
+                if (!confirmBtn) return;
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Listo';
+            };
+            const resetButtonState = () => {
+                if (!confirmBtn) return;
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = confirmBtn.dataset.defaultText || 'Confirmar';
+            };
+
+            const solucionElegida = document.getElementById('solucion-select').value;
+            if (!solucionElegida) { alert('Selecciona una solución.'); return; }
+
+            const payload = {
+                wh: currentUbicacion.wh,
+                rack: currentUbicacion.rack,
+                fila: currentUbicacion.fila,
+                columna: currentUbicacion.columna,
+                miner_id: currentMinerData.id,
+                falla: currentMinerData.diagnostico_detalle || 'Sin dato',
+                solucion: solucionElegida,
+                observacion: '',
+                marcar_solucionado: true
+            };
+
+            setLoadingState();
+            try {
+                const res = await fetch('/api/diagnostico/guardar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok) {
+                    markDoneState();
+                    bootstrap.Modal.getInstance(document.getElementById('modalSolucionado'))?.hide();
+                    alert('✅ Equipo marcado como SOLUCIONADO. Se actualizó el historial.');
+                    location.reload();
+                } else {
+                    resetButtonState();
+                    alert('Error: ' + json.message);
+                }
+            } catch (e) {
+                console.error(e);
+                resetButtonState();
+                alert('Error de conexión al marcar solucionado');
+            }
+        }
+
+        async function conciliarMiner() {
+            const wh = document.getElementById('input-wh').value;
+            const rack = document.getElementById('input-rack').value;
+            const f = document.getElementById('input-fila').value;
+            const c = document.getElementById('input-columna').value;
+
+            // Usa la lógica centralizada de conciliación si está cargada (rma_actions.js)
+            if (typeof iniciarConciliacion === 'function') {
+                return iniciarConciliacion(wh, rack, f, c);
+            }
+
+            // Fallback simple: avisar al usuario si la librería no está disponible
+            alert('No se pudo iniciar la conciliación: componente no cargado. Recarga la página.');
+        }
+
+        async function moverMiner() {
+            const wh = document.getElementById('input-wh').value;
+            const rack = document.getElementById('input-rack').value;
+            const f = document.getElementById('input-fila').value;
+            const c = document.getElementById('input-columna').value;
+            const datosPantalla = {
+                sn_digital: document.getElementById('input-sn-digital').value,
+                mac: document.getElementById('input-mac').value,
+                psu_sn: document.getElementById('input-psu').value,
+                psu_model: document.getElementById('input-psu-model').value,
+                cb_sn: document.getElementById('input-cb').value
+            };
+            const fallaDetectada = document.getElementById('input-falla').value;
+            const logDetectado = document.getElementById('input-log').value;
+            let motivoFinal = "";
+            if (fallaDetectada && fallaDetectada !== "") {
+                motivoFinal = fallaDetectada;
+                if (logDetectado) motivoFinal += ` - ${logDetectado}`;
+            } else {
+                const inputUsuario = prompt("📋 TRASLADO A LABORATORIO\n\nIngrese el MOTIVO del traslado:", "Reubicación");
+                if (inputUsuario === null) return;
+                motivoFinal = inputUsuario;
+            }
+            if (confirm(`¿Mover a LABORATORIO?\n\nMotivo: ${motivoFinal}`)) {
+                try {
+                    const btn = document.querySelector('#btns-rma button[onclick="moverMiner()"]');
+                    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ...'; }
+                    const resp = await fetch('/api/mover', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wh, rack, f, c, motivo: motivoFinal, ...datosPantalla })
+                    });
+                    const payload = await resp.json();
+
+                    if (!resp.ok || payload.status !== 'ok') {
+                        throw new Error(payload.message || 'No se pudo crear la solicitud');
+                    }
+
+                    alert(payload.message || "✅ Solicitud de traslado enviada a aprobación.");
+                    location.reload();
+                } catch (e) {
+                    alert("Error al crear la solicitud: " + (e.message || 'Intenta nuevamente.'));
+                    if (btn) btn.disabled = false;
+                }
+            }
+        }
+
+        async function validarYEnviarRMA() {
+            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            let faltaAlgo = false;
+            let mensajeError = "";
+            const noEnciende = !!document.getElementById('input-no-enciende')?.checked;
+            const camposUniversales = ['input-sn', 'input-ip-rma', 'input-mac', 'input-ths', 'input-falla'];
+            if (!noEnciende) {
+                camposUniversales.push('input-log');
+            }
+            camposUniversales.forEach(id => {
+                const input = document.getElementById(id);
+                if (!input || !input.value.trim()) { if (input) input.classList.add('is-invalid'); faltaAlgo = true; }
+            });
+            if (faltaAlgo) {
+                mensajeError = "Faltan datos básicos obligatorios (SN, IP del puerto actual, MAC, TH, Falla o Log).";
+            } else {
+                const tipoFalla = document.getElementById('input-falla').value;
+                if (tipoFalla === 'PSU') {
+                    const psuModel = document.getElementById('input-psu-model');
+                    const psuSn = document.getElementById('input-psu');
+                    if (!psuModel.value.trim()) { psuModel.classList.add('is-invalid'); faltaAlgo = true; }
+                    if (!psuSn.value.trim()) { psuSn.classList.add('is-invalid'); faltaAlgo = true; }
+                    if (faltaAlgo) mensajeError = "Para falla de PSU, debes completar Modelo y SN de la fuente.";
+                } else if (tipoFalla === 'CONTROL BOARD') {
+                    const cbSn = document.getElementById('input-cb');
+                    if (!cbSn.value.trim()) { cbSn.classList.add('is-invalid'); faltaAlgo = true; mensajeError = "SN de Control Board obligatorio."; }
+                } else if (tipoFalla === 'HASHBOARD') {
+                    const hb1 = document.getElementById('input-hb1').value.trim();
+                    const hb2 = document.getElementById('input-hb2').value.trim();
+                    const hb3 = document.getElementById('input-hb3').value.trim();
+                    if (!hb1 && !hb2 && !hb3) {
+                        ['input-hb1', 'input-hb2', 'input-hb3'].forEach(id => document.getElementById(id).classList.add('is-invalid'));
+                        faltaAlgo = true; mensajeError = "Ingresa al menos un SN de placa (HB).";
+                    }
+                }
+            }
+            const logFileInput = document.getElementById('input-log-file');
+            const logFile = logFileInput && logFileInput.files ? logFileInput.files[0] : null;
+            if (!noEnciende) {
+                if (!logFile) {
+                    faltaAlgo = true;
+                    mensajeError = 'Debes adjuntar el archivo .txt del log para RMA.';
+                    if (logFileInput) logFileInput.classList.add('is-invalid');
+                } else if (!String(logFile.name || '').toLowerCase().endsWith('.txt')) {
+                    faltaAlgo = true;
+                    mensajeError = 'El archivo de log debe ser .txt';
+                    if (logFileInput) logFileInput.classList.add('is-invalid');
+                }
+            }
+            if (faltaAlgo) {
+                alert("⚠️ DATOS INCOMPLETOS:\n\n" + mensajeError);
+                return;
+            }
+            if (confirm("✅ Datos completos.\n\nSe registrará RMA y el log .txt se subirá a Drive.\nLa exportación a Sheets quedará en cola para las 17:00.\n\n¿Continuar?")) {
+                const form = document.getElementById('formMiner');
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch('/api/rma/enviar_y_exportar', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    // Verificar si recibimos HTML (Login Page) en vez de JSON
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        if (text.includes("<!DOCTYPE html>") || text.includes("<html")) {
+                            alert("⚠️ Su sesión ha expirado.\nPor favor recargue la página e inicie sesión nuevamente.");
+                            window.location.reload();
+                            return;
+                        }
+                        // Si no es HTML de login, puede ser otro error
+                        console.error('Respuesta no JSON:', text);
+                    }
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Error response:', errorText);
+                        alert('❌ Error del servidor: ' + response.status + '\n' + errorText.substring(0, 100));
+                        return;
+                    }
+
+                    const result = await response.json();
+
+                    if (result.status === 'ok') {
+                        const driveTxt = result.log_drive_link ? `\nLog Drive: ${result.log_drive_link}` : '';
+                        alert('✅ RMA registrado exitosamente. Exportación a Sheets en cola para las 17:00. Ahora puede solicitar traslado o conciliación.' + driveTxt);
+
+                        // Actualizar currentMinerData con el nuevo estado
+                        currentMinerData.proceso_estado = 'en_rma';
+                        currentMinerData.diagnostico_detalle = formData.get('diagnostico_detalle');
+
+                        // Cerrar modal actual y abrir el modal con opciones de RMA
+                        const modalMiner = bootstrap.Modal.getInstance(document.getElementById('modalMiner'));
+                        if (modalMiner) modalMiner.hide();
+
+                        // Pequeño delay para que se cierre el modal y luego abrir el nuevo
+                        setTimeout(() => {
+                            abrirModalMinerDirecto(currentMinerData, currentUbicacion.wh, currentUbicacion.rack, currentUbicacion.fila, currentUbicacion.columna);
+                        }, 300);
+                    } else {
+                        alert('❌ Error: ' + (result.message || 'Error al registrar RMA'));
+                    }
+                } catch (error) {
+                    console.error('Error al enviar RMA:', error);
+                    alert('Error de conexión al registrar RMA');
+                }
+            }
+        }
+
+        async function cancelarRMA() {
+            const wh = document.getElementById('input-wh').value;
+            const rack = document.getElementById('input-rack').value;
+            const f = document.getElementById('input-fila').value;
+            const c = document.getElementById('input-columna').value;
+            if (confirm("¿Fue un error? \n\nEste equipo volverá a estado OPERATIVO.")) {
+                try {
+                    const response = await fetch('/api/rma/cancelar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wh, rack, f, c })
+                    });
+                    if (response.ok) { alert("✅ RMA Cancelado."); location.reload(); }
+                    else { alert("❌ Error al cancelar."); }
+                } catch (e) { alert("Error de conexión."); }
+            }
+        }
+
+        async function iniciarReparacion(id) {
+            if (confirm("¿Recibir este equipo e iniciar diagnóstico en la Mesa de Trabajo?")) {
+                try {
+                    const res = await fetch('/api/lab/iniciar', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id })
+                    });
+                    if (res.ok) location.reload();
+                } catch (e) { alert("Error de conexión"); }
+            }
+        }
+
+        async function finalizarReparacion(id) {
+            const solucion = prompt("📝 Breve detalle de la reparación realizada:", "Cambio de ventilador");
+            if (solucion) {
+                try {
+                    const res = await fetch('/api/lab/terminar', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id, solucion })
+                    });
+                    if (res.ok) { alert("✅ Equipo enviado a Stock."); location.reload(); }
+                } catch (e) { alert("Error."); }
+            }
+        }
+
+        let modalScrap;
+        function abrirModalScrap(id, sn) {
+            if (!document.getElementById('scrap-id')) return;
+            document.getElementById('scrap-id').value = id;
+            document.getElementById('scrap-sn').innerText = sn;
+            modalScrap = new bootstrap.Modal(document.getElementById('modalScrap'));
+            modalScrap.show();
+        }
+
+        async function confirmarScrap(tipo) {
+            const id = document.getElementById('scrap-id').value;
+            const motivo = prompt("Motivo de la baja:", "Irreparable");
+            if (motivo) {
+                try {
+                    const res = await fetch('/api/lab/scrap', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id, tipo, motivo })
+                    });
+                    if (res.ok) { alert("✅ Equipo dado de baja."); location.reload(); }
+                } catch (e) { alert("Error."); }
+            }
+        }
+
+        // Evita que el lector de códigos cierre el modal al enviar Enter
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('formMiner');
+            if (!form) return;
+            form.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && e.target && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                }
+            });
+        });
+
+        function toggleNoEnciendeLogUI() {
+            const noEnciende = !!document.getElementById('input-no-enciende')?.checked;
+            const logTextInput = document.getElementById('input-log');
+            const logFileInput = document.getElementById('input-log-file');
+            const statusText = document.getElementById('no-enciende-status');
+
+            if (logTextInput) {
+                logTextInput.disabled = noEnciende;
+                if (noEnciende) {
+                    logTextInput.classList.remove('is-invalid');
+                    if (!logTextInput.value.trim()) {
+                        logTextInput.value = 'NO ENCIENDE';
+                    }
+                } else if (logTextInput.value.trim().toUpperCase() === 'NO ENCIENDE') {
+                    logTextInput.value = '';
+                }
+            }
+
+            if (logFileInput) {
+                logFileInput.disabled = noEnciende;
+                if (noEnciende) {
+                    logFileInput.classList.remove('is-invalid');
+                    logFileInput.value = '';
+                }
+            }
+
+            if (statusText) {
+                statusText.classList.remove('text-white-50', 'text-warning', 'text-success');
+                if (noEnciende) {
+                    statusText.classList.add('text-success');
+                    statusText.textContent = 'Estado: Log no requerido (equipo no enciende).';
+                } else {
+                    statusText.classList.add('text-warning');
+                    statusText.textContent = 'Estado: Log .txt requerido.';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const noEnciendeCheckbox = document.getElementById('input-no-enciende');
+            if (!noEnciendeCheckbox) return;
+            noEnciendeCheckbox.addEventListener('change', toggleNoEnciendeLogUI);
+            toggleNoEnciendeLogUI();
+        });
+
+        // Bloqueo de doble submit en todos los formularios y botones marcados
+        document.addEventListener('DOMContentLoaded', function () {
+            function disableButtons(elements) {
+                elements.forEach(btn => {
+                    if (btn.disabled) return;
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                    if (btn.tagName === 'BUTTON') {
+                        const label = (btn.dataset.originalText || btn.textContent || 'Procesando...').trim();
+                        btn.dataset.originalText = btn.innerHTML;
+                        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>${label}`;
+                    }
+                });
+            }
+
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', () => {
+                    // Deshabilita todos los botones del formulario (submit, cancel, etc.)
+                    const buttons = form.querySelectorAll('button, input[type="submit"], input[type="button"], input[type="reset"]');
+                    disableButtons(buttons);
+                });
+            });
+
+            document.querySelectorAll('[data-disable-on-click]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (btn.dataset.clickLocked) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                    btn.dataset.clickLocked = '1';
+                    disableButtons([btn]);
+                });
+            });
+        });
+    </script>
+    <style>
+        .hover-light:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            color: #fff !important;
+        }
+
+        .hover-white:hover {
+            color: #fff !important;
+        }
+    </style>
 </body>
+
 </html>

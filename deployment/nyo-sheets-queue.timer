@@ -1,0 +1,11 @@
+[Unit]
+Description=Programar flush de exportes a Google Sheets a las 17:00
+
+[Timer]
+OnCalendar=*-*-* 17:00:00
+Timezone=America/Asuncion
+Persistent=true
+Unit=nyo-sheets-queue.service
+
+[Install]
+WantedBy=timers.target

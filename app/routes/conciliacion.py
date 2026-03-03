@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from app.models.solicitud_pieza import SolicitudPieza
 from app.models.solicitud import SolicitudTraslado
+from app.models.diagnostico import Diagnostico
 from app.models.user import Movimiento
 from app.models.miner import Miner
 from app.utils.auth_decorators import login_required
@@ -83,6 +84,8 @@ def crear_conciliacion():
                 miner_id=miner_id,
                 tipo_pieza=pieza,
                 ubicacion_reparacion='WH',
+                tipo_conciliacion='WH',
+                wh_origen=miner.warehouse_id,
                 estado='pendiente_aprobacion_lab',
                 comentario=comentario,
                 solicitante_id=session['user_id']
@@ -91,6 +94,11 @@ def crear_conciliacion():
             
             # 3. Log movimiento
             ubicacion = f"WH{miner.warehouse_id}-R{miner.rack_id}-{miner.fila}:{miner.columna}"
+
+            # Registrar solución en historial de diagnóstico
+            ultimo_diag = Diagnostico.query.filter_by(miner_id=miner_id).order_by(Diagnostico.fecha.desc()).first()
+            if ultimo_diag and not ultimo_diag.solucion:
+                ultimo_diag.solucion = 'Conciliación'
             
             # ACTUALIZACION DE ESTADO: Pasa a 'Conciliando'
             miner.proceso_estado = 'Conciliando'
@@ -115,20 +123,27 @@ def crear_conciliacion():
             # ===================================================
             
             # 1. Crear solicitud de traslado
-            traslado = SolicitudTraslado(
-                miner_id=miner_id,
-                origen_wh=miner.warehouse_id,
-                origen_rack=miner.rack_id,
-                origen_fila=miner.fila,
-                origen_columna=miner.columna,
-                destino='LAB',
-                sector='Hydro' if miner.warehouse_id == 100 else 'WH',
-                motivo=f"CONCILIACIÓN LAB: Prueba de pieza {pieza}. {comentario}",
-                solicitante_id=session['user_id'],
-                estado='pendiente_lab' # Lab aprueba tanto la pieza como el traslado
-            )
-            db.session.add(traslado)
-            db.session.flush() # Para obtener ID
+            traslado = SolicitudTraslado.query.filter(
+                SolicitudTraslado.miner_id == miner_id,
+                SolicitudTraslado.estado == 'pendiente_lab'
+            ).order_by(SolicitudTraslado.fecha_solicitud.desc()).first()
+
+            if not traslado:
+                traslado = SolicitudTraslado(
+                    miner_id=miner_id,
+                    origen_wh=miner.warehouse_id,
+                    origen_rack=miner.rack_id,
+                    origen_fila=miner.fila,
+                    origen_columna=miner.columna,
+                    destino='LAB',
+                    sector='Hydro' if miner.warehouse_id == 100 else 'WH',
+                    motivo=f"CONCILIACIÓN LAB: Prueba de pieza {pieza}. {comentario}",
+                    solicitante_id=session['user_id'],
+                    # Requiere aprobación del Lab primero; luego coordinador
+                    estado='pendiente_lab'
+                )
+                db.session.add(traslado)
+                db.session.flush() # Para obtener ID
             
             # 2. Crear solicitud de pieza vinculada
             solicitud_pieza = SolicitudPieza(
@@ -145,6 +160,10 @@ def crear_conciliacion():
             db.session.add(solicitud_pieza)
             
             # 3. Log
+            ultimo_diag = Diagnostico.query.filter_by(miner_id=miner_id).order_by(Diagnostico.fecha.desc()).first()
+            if ultimo_diag and not ultimo_diag.solucion:
+                ultimo_diag.solucion = 'Conciliación'
+
             db.session.add(Movimiento(
                 usuario_id=session['user_id'],
                 accion="SOLICITUD CONCILIACIÓN LAB",
@@ -152,6 +171,8 @@ def crear_conciliacion():
                 datos_nuevos=f"Pieza: {pieza}. Requiere traslado a LAB para prueba."
             ))
             
+            # Bloquear mientras se procesa el traslado
+            miner.proceso_estado = 'pendiente_traslado'
             db.session.commit()
             return jsonify({'status': 'ok', 'message': 'Solicitud de conciliación en Lab creada. Pendiente aprobación.'})
             

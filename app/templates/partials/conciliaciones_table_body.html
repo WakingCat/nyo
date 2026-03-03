@@ -4,7 +4,8 @@
         <td>#{{ sol.id }}</td>
         <td>
             <strong>{{ sol.miner.sn_fisica }}</strong><br>
-            <small class="text-muted">{{ sol.miner.modelo }}</small>
+            <small class="text-muted d-block">{{ sol.miner.modelo }}</small>
+            <small class="text-info d-block"><i class="bi bi-geo-alt-fill me-1"></i>{{ sol.ubicacion_conciliacion }}</small>
         </td>
         <td>{{ sol.tipo_pieza }}</td>
         <td>
@@ -40,6 +41,9 @@
             {% elif sol.estado == 'recibido' %}
                 <button class="btn btn-sm btn-success me-1" data-bs-toggle="modal" data-bs-target="#modalExito{{ sol.id }}">
                     <i class="bi bi-check-lg"></i> Éxito
+                </button>
+                <button class="btn btn-sm btn-warning text-dark me-1" data-bs-toggle="modal" data-bs-target="#modalReintento{{ sol.id }}">
+                    <i class="bi bi-arrow-repeat"></i> Otra pieza
                 </button>
                 <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalCeder{{ sol.id }}">
                     <i class="bi bi-arrow-return-left"></i> Ceder a Lab

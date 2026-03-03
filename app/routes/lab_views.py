@@ -2,13 +2,18 @@
 Lab Views Routes
 Vistas del laboratorio (dashboards, solicitudes, stock, etc.)
 """
-from flask import Blueprint, render_template, request, session, jsonify
+from flask import Blueprint, render_template, request, session, jsonify, redirect, url_for, flash
+from flask import Response
 from app.utils.auth_decorators import login_required
 from app.utils.permission_decorators import lab_technician_required
 from app.services.repair_service import repair_service
 from app.models.miner import Miner
+from app.models.solicitud import SolicitudTraslado
 from app.models.user import Movimiento
 from app import db
+import csv
+import io
+from datetime import datetime
 
 lab_bp = Blueprint('lab', __name__, url_prefix='/lab')
 
@@ -75,18 +80,20 @@ def aprobar_pieza(id):
             datos_nuevos=f"Pieza {solicitud.tipo_pieza} aprobada para conciliación {solicitud.tipo_conciliacion}"
         ))
         
-        if solicitud.tipo_conciliacion == 'WH':
-            # In-Situ: Pasa a depósito para envío
+        tipo_conciliacion = (solicitud.tipo_conciliacion or 'WH').upper()
+
+        if tipo_conciliacion == 'WH':
+            # In-Situ: Pasa directo a Depósito
             solicitud.estado = 'pendiente_deposito'
             
-        elif solicitud.tipo_conciliacion == 'LAB':
-            # En Lab: Aprueba la pieza Y avanza el traslado vinculado
-            solicitud.estado = 'pendiente_deposito' # La pieza igual se pide al depósito
+        elif tipo_conciliacion == 'LAB':
+            # En Lab: primero Coordinador, luego Depósito
+            solicitud.estado = 'pendiente_coordinador'
             
             if solicitud.solicitud_traslado_id:
                 traslado = SolicitudTraslado.query.get(solicitud.solicitud_traslado_id)
                 if traslado:
-                    # Avanzar traslado a Coordinador
+                    # Avanzar traslado a Coordinador (Hydro mantiene su coordinador específico)
                     traslado.estado = 'pendiente_coordinador_hydro' if traslado.sector == 'Hydro' else 'pendiente_coordinador'
                     db.session.add(Movimiento(
                         usuario_id=session['user_id'],
@@ -145,7 +152,77 @@ def rechazar_pieza(id):
 def solicitudes():
     """Vista de solicitudes pendientes usando RepairService"""
     solicitudes = repair_service.get_pending_requests()
-    return render_template('lab_solicitudes.html', solicitudes=solicitudes)
+    current_month = datetime.now().strftime('%Y-%m')
+    return render_template('lab_solicitudes.html', solicitudes=solicitudes, current_month=current_month)
+
+
+@lab_bp.route('/solicitudes/csv-mensual')
+@login_required
+@lab_technician_required()
+def solicitudes_csv_mensual():
+    """Descarga CSV mensual de todos los RMA registrados en el mes indicado."""
+    month_str = (request.args.get('month') or '').strip()
+    try:
+        if month_str:
+            period_start = datetime.strptime(month_str, '%Y-%m')
+        else:
+            now = datetime.now()
+            period_start = datetime(now.year, now.month, 1)
+    except ValueError:
+        return jsonify({'status': 'error', 'message': 'Formato de mes inválido. Use YYYY-MM'}), 400
+
+    if period_start.month == 12:
+        period_end = datetime(period_start.year + 1, 1, 1)
+    else:
+        period_end = datetime(period_start.year, period_start.month + 1, 1)
+
+    solicitudes_mes = SolicitudTraslado.query.filter(
+        SolicitudTraslado.motivo.ilike('RMA:%'),
+        SolicitudTraslado.fecha_solicitud >= period_start,
+        SolicitudTraslado.fecha_solicitud < period_end
+    ).order_by(SolicitudTraslado.fecha_solicitud.asc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        'fecha_solicitud', 'estado', 'origen', 'destino', 'sector', 'motivo',
+        'sn_fisica', 'sn_digital', 'modelo', 'falla_reportada', 'ip', 'mac',
+        'ths', 'psu_model', 'psu_sn', 'cb_sn', 'hb1_sn', 'hb2_sn', 'hb3_sn'
+    ])
+
+    for s in solicitudes_mes:
+        m = s.miner
+        writer.writerow([
+            s.fecha_solicitud.strftime('%Y-%m-%d %H:%M:%S') if s.fecha_solicitud else '',
+            s.estado or '',
+            s.origen_str or '',
+            s.destino or '',
+            s.sector or '',
+            s.motivo or '',
+            m.sn_fisica if m else '',
+            m.sn_digital if m else '',
+            m.modelo if m else '',
+            m.diagnostico_detalle if m else '',
+            m.ip_address if m else '',
+            m.mac_address if m else '',
+            m.ths if m else '',
+            m.psu_model if m else '',
+            m.psu_sn if m else '',
+            m.cb_sn if m else '',
+            m.hb1_sn if m else '',
+            m.hb2_sn if m else '',
+            m.hb3_sn if m else ''
+        ])
+
+    csv_data = output.getvalue()
+    output.close()
+
+    filename = f"lab_rma_mensual_{period_start.strftime('%Y_%m')}.csv"
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
 
 
 @lab_bp.route('/solicitudes-partial')
@@ -228,10 +305,23 @@ def iniciar_reparacion():
     data = request.get_json(silent=True) or request.form
     miner_id = data.get('id')
     
+    
+    print(f"DEBUG: iniciar_reparacion called. Miner ID: {miner_id}")
+    
     if not miner_id:
         miner_id = request.args.get('id')
     
+    print(f"DEBUG: Processing Miner ID: {miner_id}")
+    
+    # Check miner status before attempting
+    minero = Miner.query.get(miner_id)
+    if minero:
+        print(f"DEBUG: Miner Found: {minero.sn_fisica}, State: {minero.proceso_estado}")
+    else:
+        print("DEBUG: Miner NOT found")
+
     success = repair_service.start_repair(miner_id)
+    print(f"DEBUG: start_repair result: {success}")
     
     if success:
         minero = Miner.query.get(miner_id)
@@ -242,9 +332,15 @@ def iniciar_reparacion():
             datos_nuevos="Equipo en mesa de trabajo."
         ))
         db.session.commit()
-        return '', 200
+        if request.headers.get('HX-Request'):
+            return '', 200
+        flash('Equipo recibido y pasado a Mesa de Trabajo', 'success')
+        return redirect(request.referrer or url_for('main.lab_solicitudes'))
     
-    return jsonify({'status': 'error'}), 404
+    if request.headers.get('HX-Request'):
+        return jsonify({'status': 'error'}), 404
+    flash('No se pudo iniciar la reparación', 'danger')
+    return redirect(request.referrer or url_for('main.lab_solicitudes'))
 
 
 @lab_bp.route('/api/terminar', methods=['POST'])
@@ -267,9 +363,15 @@ def terminar_reparacion():
             datos_nuevos=f"Equipo pasa a STOCK LAB. Solución: {solucion}"
         ))
         db.session.commit()
-        return '', 200
+        if request.headers.get('HX-Request'):
+            return '', 200
+        flash('Equipo movido a Stock Lab', 'success')
+        return redirect(request.referrer or url_for('lab.reparacion'))
     
-    return jsonify({'status': 'error'}), 404
+    if request.headers.get('HX-Request'):
+        return jsonify({'status': 'error'}), 404
+    flash('No se pudo finalizar la reparación', 'danger')
+    return redirect(request.referrer or url_for('lab.reparacion'))
 
 
 @lab_bp.route('/api/scrap', methods=['POST'])
@@ -303,9 +405,15 @@ def scrap_equipo():
             datos_nuevos=f"Motivo: {motivo}. {msg_extra}"
         ))
         db.session.commit()
-        return jsonify({'status': 'ok'})
+        if request.headers.get('HX-Request'):
+            return jsonify({'status': 'ok'})
+        flash('Equipo dado de baja', 'warning')
+        return redirect(request.referrer or url_for('lab.reparacion'))
     
-    return jsonify({'status': 'error', 'message': 'Minero no encontrado'}), 404
+    if request.headers.get('HX-Request'):
+        return jsonify({'status': 'error', 'message': 'Minero no encontrado'}), 404
+    flash('No se pudo dar de baja el equipo', 'danger')
+    return redirect(request.referrer or url_for('lab.reparacion'))
 
 
 @lab_bp.route('/api/reinstalar', methods=['POST'])
@@ -355,11 +463,16 @@ def reinstalar_equipo():
             datos_nuevos=f"Reinstalado en {destino_str}"
         ))
         db.session.commit()
-        
-        return jsonify({'status': 'ok', 'message': 'Equipo reinstalado exitosamente'})
+        if request.headers.get('HX-Request'):
+            return jsonify({'status': 'ok', 'message': 'Equipo reinstalado exitosamente'})
+        flash('Equipo reinstalado correctamente', 'success')
+        return redirect(request.referrer or url_for('lab.stock'))
     
     error_msg = result.get('error', 'Error al reinstalar')
-    return jsonify({'status': 'error', 'message': error_msg}), 400
+    if request.headers.get('HX-Request'):
+        return jsonify({'status': 'error', 'message': error_msg}), 400
+    flash(error_msg, 'danger')
+    return redirect(request.referrer or url_for('lab.stock'))
 
 
 @lab_bp.route('/api/reinstalar-origen', methods=['POST'])
@@ -396,8 +509,13 @@ def reinstalar_al_origen():
             datos_nuevos=f"Reinstalado en {destino_str}"
         ))
         db.session.commit()
-        
-        return jsonify({'status': 'ok', 'message': f'Equipo reinstalado en posición original'})
+        if request.headers.get('HX-Request'):
+            return jsonify({'status': 'ok', 'message': f'Equipo reinstalado en posición original'})
+        flash('Equipo reinstalado en su posición original', 'success')
+        return redirect(request.referrer or url_for('lab.stock', sector='Hydro'))
     
     error_msg = result.get('error', 'Error al reinstalar')
-    return jsonify({'status': 'error', 'message': error_msg}), 400
+    if request.headers.get('HX-Request'):
+        return jsonify({'status': 'error', 'message': error_msg}), 400
+    flash(error_msg, 'danger')
+    return redirect(request.referrer or url_for('lab.stock', sector='Hydro'))

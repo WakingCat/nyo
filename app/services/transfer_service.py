@@ -3,9 +3,12 @@ Servicio de Gestión de Solicitudes de Traslado
 Maneja el workflow de aprobación de traslados de mineros
 """
 from app.models.solicitud import SolicitudTraslado
+from app.models.solicitud_pieza import SolicitudPieza
+from app.models.diagnostico import Diagnostico
 from app.models.miner import Miner
-from app.models.user import User, Movimiento
+from app.models.user import User, Movimiento, Role
 from app import db
+from app.services.notification_service import send_notification
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
@@ -51,9 +54,30 @@ class TransferService:
         
         # Bloquear miner de acciones RMA mientras tiene solicitud pendiente
         minero.proceso_estado = 'pendiente_traslado'
+
+        # Si el traslado corresponde a RMA, registrar solución automática en historial de diagnóstico
+        try:
+            if (motivo or '').strip().upper().startswith('RMA'):
+                ultimo_diag = Diagnostico.query.filter_by(miner_id=miner_id).order_by(Diagnostico.fecha.desc()).first()
+                if ultimo_diag and not ultimo_diag.solucion:
+                    ultimo_diag.solucion = 'RMA'
+        except Exception:
+            pass
         
         db.session.add(solicitud)
         db.session.commit()
+        
+        # NOTIFICAR AL LABORATORIO
+        # Buscar ID del rol 'Lab' o notificar a todos con ese rol
+        # Por simplicidad, asumiremos que existe un rol "Lab" o enviamos a Site Manager si no hay Lab definido
+        lab_role = Role.query.filter(Role.nombre_puesto.ilike('%Lab%')).first()
+        if lab_role:
+            send_notification(
+                message=f"Nueva solicitud de traslado: {minero.sn_fisica} ({motivo})",
+                recipient_role_id=lab_role.id,
+                link=f"/lab/aprobaciones/",
+                type='info'
+            )
         
         return solicitud
     
@@ -76,22 +100,36 @@ class TransferService:
         if not solicitud or solicitud.estado not in ['pendiente_coordinador', 'pendiente_coordinador_hydro', 'pendiente']:
             return False
         
+        aprobador = User.query.get(aprobador_id)
+        aprobador_nombre = aprobador.username if aprobador else 'Usuario'
+
         solicitud.estado = 'aprobado'
         solicitud.aprobador_id = aprobador_id
         solicitud.fecha_resolucion = datetime.now()
         solicitud.comentario_resolucion = comentario or 'Aprobado'
-        
+
+        # Si hay solicitud de pieza vinculada a conciliación LAB, liberarla a Depósito
+        solicitud_pieza = SolicitudPieza.query.filter_by(solicitud_traslado_id=solicitud.id).first()
+        if solicitud_pieza and solicitud_pieza.estado == 'pendiente_coordinador':
+            solicitud_pieza.estado = 'pendiente_deposito'
+
         db.session.commit()
         
         # Registrar en historial
-        aprobador = User.query.get(aprobador_id)
         db.session.add(Movimiento(
             usuario_id=aprobador_id,
             accion="TRASLADO APROBADO",
             referencia_miner=f"SN: {solicitud.miner.sn_fisica}",
-            datos_nuevos=f"Destino: {solicitud.destino}. Aprobado por: {aprobador.username}"
+            datos_nuevos=f"Destino: {solicitud.destino}. Aprobado por: {aprobador_nombre}"
         ))
         db.session.commit()
+        
+        # NOTIFICAR AL SOLICITANTE (FINAL)
+        send_notification(
+            message=f"¡Aprobado! Solicitud de traslado para {solicitud.miner.sn_fisica} autorizada.",
+            recipient_user_id=solicitud.solicitante_id,
+            type='success'
+        )
         
         return True
     
@@ -252,9 +290,10 @@ class TransferService:
 
     @staticmethod
     def get_pending_lab_approval() -> List[SolicitudTraslado]:
-        """Obtiene solicitudes pendientes de aprobación del laboratorio"""
-        return SolicitudTraslado.query.filter_by(estado='pendiente_lab')\
-            .order_by(SolicitudTraslado.fecha_solicitud.desc()).all()
+        """Obtiene solicitudes pendientes de aprobación del laboratorio (incluye RMA)."""
+        return SolicitudTraslado.query.filter(
+            SolicitudTraslado.estado == 'pendiente_lab'
+        ).order_by(SolicitudTraslado.fecha_solicitud.desc()).all()
 
     @staticmethod
     def lab_approve(solicitud_id: int, user_id: int) -> bool:
@@ -270,6 +309,17 @@ class TransferService:
         else:
             solicitud.estado = 'pendiente_coordinador'
             msg = "Aprobado por Lab -> Enviado a Coordinador"
+
+        # Si hay una conciliación asociada, avanzar pieza a pendiente de coordinador (no depósito aún)
+        solicitud_pieza = SolicitudPieza.query.filter_by(solicitud_traslado_id=solicitud.id).first()
+        if solicitud_pieza and solicitud_pieza.estado == 'pendiente_aprobacion_lab':
+            solicitud_pieza.estado = 'pendiente_coordinador'
+            db.session.add(Movimiento(
+                usuario_id=user_id,
+                accion="CONCILIACION VALIDADA LAB",
+                referencia_miner=f"SN: {solicitud.miner.sn_fisica}",
+                datos_nuevos=f"Solicitud pieza #{solicitud_pieza.id} pasa a Coordinador"
+            ))
         
         db.session.add(Movimiento(
             usuario_id=user_id,
@@ -278,6 +328,19 @@ class TransferService:
             datos_nuevos=msg
         ))
         db.session.commit()
+        
+        # NOTIFICAR A COORDINADORES
+        coord_role_name = 'Coordinador Hydro' if solicitud.sector == 'Hydro' else 'Coordinador'
+        coord_role = Role.query.filter(Role.nombre_puesto.ilike(f'%{coord_role_name}%')).first()
+        
+        if coord_role:
+             send_notification(
+                message=f"Solicitud aprobada por Lab: {solicitud.miner.sn_fisica}. Pendiente de tu aprobación.",
+                recipient_role_id=coord_role.id,
+                link="/dashboard/coordinador", # Asumiendo ruta
+                type='success'
+            )
+
         return True
     
     @staticmethod
@@ -300,7 +363,27 @@ class TransferService:
             referencia_miner=f"SN: {solicitud.miner.sn_fisica}",
             datos_nuevos="Autorizado por Coordinador Hydro -> Listo para traslado"
         ))
+
+        # En conciliaciones Hydro, la aprobación libera la pieza hacia Depósito
+        solicitud_pieza = SolicitudPieza.query.filter_by(solicitud_traslado_id=solicitud.id).first()
+        if solicitud_pieza and solicitud_pieza.estado == 'pendiente_coordinador':
+            solicitud_pieza.estado = 'pendiente_deposito'
+            db.session.add(Movimiento(
+                usuario_id=user_id,
+                accion="CONCILIACION HYDRO -> DEPOSITO",
+                referencia_miner=f"SN: {solicitud.miner.sn_fisica}",
+                datos_nuevos=f"Solicitud pieza #{solicitud_pieza.id} habilitada para Depósito"
+            ))
+
         db.session.commit()
+        
+        # NOTIFICAR AL SOLICITANTE (FINAL HYDRO)
+        send_notification(
+            message=f"¡Aprobado! Solicitud Hydro para {solicitud.miner.sn_fisica} autorizada.",
+            recipient_user_id=solicitud.solicitante_id,
+            type='success'
+        )
+        
         return True
 
     @staticmethod
@@ -314,6 +397,10 @@ class TransferService:
         solicitud.fecha_resolucion = datetime.now()
         solicitud.comentario_resolucion = f"Rechazado por LAB: {motivo}"
         solicitud.aprobador_id = user_id
+
+        solicitud_pieza = SolicitudPieza.query.filter_by(solicitud_traslado_id=solicitud.id).first()
+        if solicitud_pieza:
+            solicitud_pieza.estado = 'rechazado'
         
         # Restaurar miner a estado RMA para permitir reintento
         if solicitud.miner:
@@ -326,6 +413,14 @@ class TransferService:
             datos_nuevos=f"Motivo: {motivo}"
         ))
         db.session.commit()
+        
+        # NOTIFICAR AL SOLICITANTE
+        send_notification(
+            message=f"Solicitud rechazada para {solicitud.miner.sn_fisica}. Motivo: {motivo}",
+            recipient_user_id=solicitud.solicitante_id,
+            type='error'
+        )
+        
         return True
 
 

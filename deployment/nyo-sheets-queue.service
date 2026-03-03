@@ -1,0 +1,16 @@
+[Unit]
+Description=Flush cola de exportes a Google Sheets (backup diferido)
+After=network.target
+
+[Service]
+Type=oneshot
+User=arturo
+WorkingDirectory=/home/arturo/nyo
+Environment="PATH=/home/arturo/nyo/.venv/bin"
+Environment="TZ=America/Asuncion"
+ExecStart=/home/arturo/nyo/.venv/bin/python /home/arturo/nyo/flush_sheets_queue.py
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

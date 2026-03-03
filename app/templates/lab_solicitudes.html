@@ -4,7 +4,15 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="text-white fw-bold"><i class="bi bi-inbox-fill me-2"></i>SOLICITUDES DE RMA</h2>
-        <a href="{{ url_for('lab.dashboard') }}" class="btn btn-outline-light">Volver</a>
+        <div class="d-flex gap-2">
+            <form method="get" action="{{ url_for('lab.solicitudes_csv_mensual') }}" class="d-flex gap-2 align-items-center">
+                <input type="month" name="month" class="form-control form-control-sm bg-dark text-white border-secondary" value="{{ current_month }}">
+                <button type="submit" class="btn btn-outline-warning btn-sm">
+                    <i class="bi bi-calendar2-week me-1"></i>CSV Mensual
+                </button>
+            </form>
+            <a href="{{ url_for('lab.dashboard') }}" class="btn btn-outline-light">Volver</a>
+        </div>
     </div>
 
     <div class="card bg-dark border-secondary">
@@ -18,10 +26,8 @@
                         <th class="text-end pe-4">Acción</th>
                     </tr>
                 </thead>
-                <tbody id="solicitudes-list"
-                       hx-get="{{ url_for('lab.solicitudes_partial') }}"
-                       hx-trigger="every 5s"
-                       hx-swap="innerHTML">
+                <tbody id="solicitudes-list" hx-get="{{ url_for('lab.solicitudes_partial') }}" hx-trigger="every 5s"
+                    hx-swap="innerHTML">
                     {% for m in solicitudes %}
                     <tr id="solicitud-{{ m.id }}">
                         <td class="ps-4 text-warning">{{ m.ubicacion_corta }}</td>
@@ -31,23 +37,18 @@
                         </td>
                         <td class="text-danger">{{ m.diagnostico_detalle }}</td>
                         <td class="text-end pe-4">
-                            <!-- HTMX en vez de JavaScript -->
-                            <button class="btn btn-primary btn-sm"
-                                    hx-post="/api/lab/iniciar"
-                                    hx-vals='{"id": "{{ m.id }}"}'
-                                    hx-confirm="¿Recibir este equipo e iniciar diagnóstico en la Mesa de Trabajo?"
-                                    hx-target="#solicitud-{{ m.id }}"
-                                    hx-swap="outerHTML swap:500ms"
-                                    hx-indicator="#spinner-{{ m.id }}">
-                                <i class="bi bi-tools"></i> RECIBIR Y REPARAR
-                                <span id="spinner-{{ m.id }}" class="htmx-indicator">
-                                    <span class="spinner-border spinner-border-sm ms-2"></span>
-                                </span>
-                            </button>
+                            <form method="post" action="{{ url_for('lab.iniciar_reparacion') }}" class="d-inline" onsubmit="return confirm('¿Recibir este equipo e iniciar diagnóstico en la Mesa de Trabajo?');">
+                                <input type="hidden" name="id" value="{{ m.id }}">
+                                <button class="btn btn-primary btn-sm" type="submit">
+                                    <i class="bi bi-tools"></i> RECIBIR Y REPARAR
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4" class="text-center py-4 text-white">Sin solicitudes pendientes.</td></tr>
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-white">Sin solicitudes pendientes.</td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -60,13 +61,15 @@
     .htmx-indicator {
         display: none;
     }
+
     .htmx-request .htmx-indicator {
         display: inline-block;
     }
+
     .htmx-request.htmx-indicator {
         display: inline-block;
     }
-    
+
     /* Animación de salida suave cuando se elimina el elemento */
     tr.htmx-swapping {
         opacity: 0;

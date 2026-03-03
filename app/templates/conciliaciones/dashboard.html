@@ -53,15 +53,16 @@
                                 <h5 class="modal-title text-success">Prueba Exitosa</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
-                            <form hx-post="{{ url_for('conciliacion_dash.finalizar_exito', id=sol.id) }}"
-                                  hx-swap="none">
+                                    <form hx-post="{{ url_for('conciliacion_dash.finalizar_exito', id=sol.id) }}"
+                                        hx-swap="none"
+                                        hx-on="htmx:beforeRequest: this.querySelector('[data-role=confirmar-exito]').setAttribute('disabled','disabled'); htmx:afterRequest: this.querySelector('[data-role=confirmar-exito]').removeAttribute('disabled'); htmx:responseError: this.querySelector('[data-role=confirmar-exito]').removeAttribute('disabled');">
                                 <div class="modal-body">
                                     <p>Confirmas que la pieza <strong>{{ sol.tipo_pieza }}</strong> solucionó el problema?</p>
                                     <textarea name="comentario" class="form-control bg-black text-white" placeholder="Comentario opcional..."></textarea>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-success">
+                                    <button type="submit" class="btn btn-success" data-role="confirmar-exito">
                                         <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
                                         Confirmar Reparación
                                     </button>
@@ -79,8 +80,9 @@
                                 <h5 class="modal-title text-danger">Ceder a Laboratorio</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
-                            <form hx-post="{{ url_for('conciliacion_dash.ceder_lab', id=sol.id) }}"
-                                  hx-swap="none">
+                                    <form hx-post="{{ url_for('conciliacion_dash.ceder_lab', id=sol.id) }}"
+                                        hx-swap="none"
+                                        hx-on="htmx:beforeRequest: this.querySelector('[data-role=ceder-lab]').setAttribute('disabled','disabled'); htmx:afterRequest: this.querySelector('[data-role=ceder-lab]').removeAttribute('disabled'); htmx:responseError: this.querySelector('[data-role=ceder-lab]').removeAttribute('disabled');">
                                 <div class="modal-body">
                                     <p>El equipo NO funcionó con la pieza nueva.</p>
                                     <p>Se generará un <strong>ingreso a Laboratorio</strong> para reparación profunda.</p>
@@ -88,9 +90,37 @@
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-danger">
+                                    <button type="submit" class="btn btn-danger" data-role="ceder-lab">
                                         <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
                                         Confirmar y Ceder
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Reintento de Pieza -->
+                <div class="modal fade" id="modalReintento{{ sol.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content bg-dark border-warning">
+                            <div class="modal-header">
+                                <h5 class="modal-title text-warning">Solicitar Otra Pieza</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form hx-post="{{ url_for('conciliacion_dash.reintentar_pieza', id=sol.id) }}"
+                                  hx-swap="none"
+                                  hx-on="htmx:beforeRequest: this.querySelector('[data-role=reintentar-pieza]').setAttribute('disabled','disabled'); htmx:afterRequest: this.querySelector('[data-role=reintentar-pieza]').removeAttribute('disabled'); htmx:responseError: this.querySelector('[data-role=reintentar-pieza]').removeAttribute('disabled');">
+                                <div class="modal-body">
+                                    <p>La pieza no funcionó, pero el equipo seguirá en conciliación.</p>
+                                    <p>Se creará una nueva solicitud de pieza para <strong>otro intento</strong>.</p>
+                                    <textarea name="comentario" class="form-control bg-black text-white" placeholder="Comentario opcional del fallo..."></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-warning text-dark" data-role="reintentar-pieza">
+                                        <span class="htmx-indicator spinner-border spinner-border-sm me-1"></span>
+                                        Confirmar Reintento
                                     </button>
                                 </div>
                             </form>
